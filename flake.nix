@@ -152,11 +152,14 @@
           ];
           shellHook = ''
             # PeakPatch system variables, used by peakpatchtools.py
-            export PP_DIR=$(pwd)
+            export PP_DIR=$(dirname $(pwd))/peakpatch
             export PYTHONPATH=$PP_DIR/python
             export PATH=$PATH:$PP_DIR/bin:$PP_DIR/python
             # Make Python scripts executable
             chmod +x $PP_DIR/python/peak-patch*.py
+
+			# MUSIC system variables
+			export MUSIC_DIR=$(dirname $(pwd))/music
 
             # Set the paths to FFTW, GFORT, MPI libraries used by PeakPatch
             export FFTW_SINGLE_PATH=${customFftw_single.dev}
