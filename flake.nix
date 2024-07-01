@@ -31,7 +31,7 @@
 #======================================================== =#
 
 {
-  description = "PeakPatch developement environment";
+  description = "PeakPatch-MUSIC Interface developement environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -227,9 +227,9 @@ Display this message
 		    alias pphelp="echo \"$PP_ALIASES\""
             # Welcome message
 			echo "
-#########################################################
-################  Welcome to PeakPatch! #################
-#########################################################
+########################################################
+########  Welcome to PeakPatch-MUSIC Interface! ########
+########################################################
 		    "
 			echo "$PP_ALIASES"
           '';
