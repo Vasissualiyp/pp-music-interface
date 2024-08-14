@@ -31,7 +31,7 @@
 #======================================================== =#
 
 {
-  description = "PeakPatch-MUSIC Interface developement environment";
+  description = "PeakPatch developement environment";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
@@ -58,6 +58,7 @@
           enableMpi = true;     
           mpi = pkgs.openmpi;   
         };
+        fortran_compiler = pkgs.gfortran13;
 
         # Healpy (failed nix port)
         healpy = pkgs.python311Packages.buildPythonPackage rec {
@@ -135,6 +136,7 @@
             cfitsio
             gcc
             mpi
+			fortran_compiler
             llvmPackages.openmp
             customFftw_single
             customFftw_double
@@ -153,29 +155,35 @@
           shellHook = ''
             # PeakPatch system variables, used by peakpatchtools.py
             export PP_DIR=$(dirname $(pwd))/peakpatch
+            export MUSIC_DIR=$(dirname $(pwd))/music
             export PYTHONPATH=$PP_DIR/python
             export PATH=$PATH:$PP_DIR/bin:$PP_DIR/python
             # Make Python scripts executable
             chmod +x $PP_DIR/python/peak-patch*.py
 
-			# MUSIC system variables
-			export MUSIC_DIR=$(dirname $(pwd))/music
-
             # Set the paths to FFTW, GFORT, MPI libraries used by PeakPatch
             export FFTW_SINGLE_PATH=${customFftw_single.dev}
             export FFTW_DOUBLE_PATH=${customFftw_double.dev}
-            export MPI_PATH=$(dirname "$(echo $PATH |  sed 's/:/\n/g' | grep -i mpi | tail -n 1)")
+            #export MPI_PATH=$(dirname "$(echo $PATH |  sed 's/:/\n/g' | grep -i mpi | tail -n 1)")
+            export MPI_PATH=${pkgs.mpich}
 
 			# MUSIC-required inputs
             export FFTW_PATH=${customFftw_single}
             export HDF5_PATH=${pkgs.hdf5}
-		    export GFORTRAN_PATH=${pkgs.gfortran}
+		    export GFORTCC_PATH=${pkgs.gfortran.cc}
+		    export GFORT_LPATH=${fortran_compiler.cc.lib}/lib
+		    export GCC_PATH=${pkgs.gcc}
 
             export GSL_INCLUDE_PATH=${pkgs.gsl.dev}/include
             export GSL_LIBRARY_PATH=${pkgs.gsl}/lib
             export HDF5_INCLUDE_PATH=${pkgs.hdf5.dev}/include
             export HDF5_LIBRARY_PATH=${pkgs.hdf5}/lib
-			export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [ pkgs.mpi ]}:$LD_LIBRARY_PATH"
+			export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [ 
+															 	pkgs.mpich
+															 	pkgs.gcc.cc.lib
+															 	#fortran_compiler.cc.lib
+														       ]
+								     }:$LD_LIBRARY_PATH
 
 
             # This flag will let peakpatchtools.py know that we're running on nix.
@@ -188,12 +196,16 @@
             # Create useful aliases and utility environment variables
             alias ppclean="$PP_DIR/cleanup.sh ./"
             alias ppcopy="python $PP_DIR/python/peak-patch.py ./param/param.params"
+            alias ppcopyini="python $PP_DIR/python/peak-patch.py ./param/parameters.ini"
             alias pprun="python $PP_DIR/python/peak-patch.py ./param/param.params; ./bin/hpkvd 1; \
 						 chmod +x *.sh; ./*.sh"
             alias ppcpep="cp -r $PP_DIR/example/param ./"
+            alias hpkvdtest="./bin/hpkvd 1 13579 ./hpkvd_params.bin; ./bin/hpkvd 0 13579 ./hpkvd_params.bin"
+            alias hpkvdtestini="./bin/hpkvd 1 13579 ./param/parameters.ini; ./bin/hpkvd 0 13579 ./param/parameters.ini"
 			alias pptest="$PP_DIR/cleanup.sh ./; \
 						   cp -r $PP_DIR/example/param ./; \
 						   python $PP_DIR/python/peak-patch.py ./param/param.params"
+            alias vasreb="$PP_DIR/scripts/rebase_main_to_vasdev.sh"
 			# Alias for  merging
 		    vimmerge() {
 		        local file=$1
@@ -205,7 +217,20 @@ Useful aliases that you can run in directory where you
 will be running PeakPatch:
 
 ppcopy:
-Will run peak-patch.py and copy the source to current dir
+Will run peak-patch.py and copy the source to current dir 
+(param.params file)
+
+ppcopyini:
+Will run peak-patch.py and copy the source to current dir 
+(parameters.ini file)
+
+hpkvdtest:
+Will create collapse tables once PeakPatch compiled,
+and run hpkvd with seed 13579 (param.params file)
+
+hpkvdtestini:
+Will create collapse tables once PeakPatch compiled,
+and run hpkvd with seed 13579 (parameters.ini file)
 
 pprun:
 Will do the same as ppcopy, but also will run peakpatch with:
@@ -223,13 +248,17 @@ Copy the source code and compile all the files
 
 pphelp:
 Display this message
+
+vasreb:
+Brings main branch up to date with vasdev and pushes all the changes. 
+Use with CAUTION! DO NOT USE if not sure if main was changed!
 '
 		    alias pphelp="echo \"$PP_ALIASES\""
             # Welcome message
 			echo "
-########################################################
-########  Welcome to PeakPatch-MUSIC Interface! ########
-########################################################
+#########################################################
+########  Welcome to PeakPatch-MUSIC Interface! #########
+#########################################################
 		    "
 			echo "$PP_ALIASES"
           '';
