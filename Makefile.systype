@@ -1,0 +1,16 @@
+# Select Target System
+#
+# Please copy this file to Makefile.systype and uncomment your
+# system. Don't commit changes to this file unless you 
+# add support for a new system.
+#
+#############
+
+#SYSTYPE="niagara"
+#SYSTYPE="niagara-gcc"
+SYSTYPE="nix"
+#SYSTYPE="cita"
+#SYSTYPE="starq"
+#SYSTYPE="darwin"
+#SYSTYPE="scinet-gpc"
+
