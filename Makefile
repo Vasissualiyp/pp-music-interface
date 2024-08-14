@@ -14,6 +14,7 @@
 #│ /_/    \___/\__,_/_/|_/ .___/\__,_/\__/\___/_/ /_/   │
 #│                      /_/                             │
 #└――――――――――――――――――――――――――――――――――――――――――――――――――――――┘
+# PeakPatch Makefile Begin
 
 ## read the systype information to use the blocks below for different machines
 ifdef SYSTYPE
@@ -561,7 +562,7 @@ OBJS = $(OBJS_h) $(OBJS_m) $(OBJS_t) $(OBJS_pm) $(OBJS_pc) $(OBJS_ctest) $(OBJS_
 clean_pp:
 	@rm -f $(EXEC) $(OBJS) $(moddir)/*.mod $(sldir)/*.o $(rfdir)/*.o $(cosmodir)/*.o $(hpdir)/*.o \
 		  $(mgdir)/*.o $(exdir)/*.o $(scdir)/*.o $(tidir)/*.o $(testdir)/*.o $(hpdir)/*.so
-	@echo "Cleanup successful!"
+	@echo "PeakPatch cleanup successful!"
 
 run_test: $(EXEC_ftest) $(EXEC_ctest) $(EXEC_initest)
 	./$(EXEC_ftest) 1 12345 
@@ -587,7 +588,182 @@ get-config:
 #│ /_/  /_/\____//____/___/\____/    │
 #│                                   │
 #└───────────────────────────────────┘
+# MUSIC Makefile Begin
+##############################################################################
+### compile time configuration options
+FFTW3		= yes
+MULTITHREADFFTW	= yes
+SINGLEPRECISION	= no
+HAVEHDF5        = yes
+HAVEBOXLIB	= no
+BOXLIB_HOME     = ${HOME}/nyx_tot_sterben/BoxLib
 
+##############################################################################
+### compiler and path settings
+
+ifdef NIX_BUILD # Compilation on nix
+    CC      = mpicc -DOMPI_SKIP_MPICXX
+	# $(GCC_PATH)/bin/g++
+    OPT     = -Wno-unknown-pragmas -mtune=native 
+	#-O3
+    CFLAGS  =  
+    LFLAGS  = -L$(GSL_LIBRARY_PATH) -lgsl -lgslcblas
+    CPATHS  = -I./src -I$(GSL_PATH) -I$(FFTW_SINGLE_PATH)/include -I$(HDF5_INCLUDE_PATH)
+    LPATHS = -L$(GSL_PATH) -L$(FFTW_PATH)/lib -L$(HDF5_LIBRARY_PATH) -L$(MPI_PATH)
+    LFLAGS += $(LPATHS) -lgsl -lgslcblas -fopenmp -lfftw3_threads -lfftw3 -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++
+	FC      = mpifort
+    FFLAGS  = -fPIC -DOMPI_SKIP_MPICXX
+	# Debugging flags - GDB
+    DEBUGFLAGS = -Wall -g -O0
+	# Debugging flags - general
+    #DEBUGFLAGS = -Wall -g
+	CFLAGS += $(DEBUGFLAGS)
+	FFLAGS += $(DEBUGFLAGS) -fbacktrace
+else # Compilation on any other machine
+    CC      = g++
+    OPT     = -Wall -Wno-unknown-pragmas -O3 -g -mtune=native
+    CFLAGS  =  
+    LFLAGS  = -lgsl -lgslcblas 
+    CPATHS  = -I./src -I$(HOME)/local/include -I/opt/local/include -I/usr/local/include
+    LPATHS  = -L$(HOME)/local/lib -L/opt/local/lib -L/usr/local/lib -L$(FFTW_DOUBLE_PATH)
+	FC      = gfortran
+    FFLAGS  = -fPIC
+endif
+
+##############################################################################
+# if you have FFTW 2.1.5 or 3.x with multi-thread support, you can enable the 
+# option MULTITHREADFFTW
+ifeq ($(strip $(MULTITHREADFFTW)), yes)
+  ifeq ($(CC), mpiicpc)
+    CFLAGS += -openmp
+    LFLAGS += -openmp
+  else
+    CFLAGS += -fopenmp
+    LFLAGS += -fopenmp
+  endif
+  ifeq ($(strip $(FFTW3)),yes)
+	ifeq ($(strip $(SINGLEPRECISION)), yes)
+		LFLAGS  +=  -lfftw3f_threads
+	else
+		LFLAGS  +=  -lfftw3_threads
+	endif
+  else
+    ifeq ($(strip $(SINGLEPRECISION)), yes)
+      LFLAGS  += -lsrfftw_threads -lsfftw_threads
+    else
+      LFLAGS  += -ldrfftw_threads -ldfftw_threads
+    endif
+  endif
+else
+  CFLAGS  += -DSINGLETHREAD_FFTW
+endif
+
+ifeq ($(strip $(FFTW3)),yes)
+  CFLAGS += -DFFTW3
+endif
+
+##############################################################################
+# this section makes sure that the correct FFTW libraries are linked
+ifeq ($(strip $(SINGLEPRECISION)), yes)
+  CFLAGS  += -DSINGLE_PRECISION
+  ifeq ($(FFTW3),yes)
+    LFLAGS += -lfftw3f
+  else
+    LFLAGS  += -lsrfftw -lsfftw
+  endif
+else
+  ifeq ($(strip $(FFTW3)),yes)
+    LFLAGS += -lfftw3
+  else
+    LFLAGS  += -ldrfftw -ldfftw
+  endif
+endif
+
+##############################################################################
+#if you have HDF5 installed, you can also enable the following options
+ifeq ($(strip $(HAVEHDF5)), yes)
+  OPT += -DH5_USE_16_API -DHAVE_HDF5
+  LFLAGS += -lhdf5
+endif
+
+##############################################################################
+CFLAGS += $(OPT)
+music_dir= $(MUSIC_DIR)
+music_src = $(music_dir)/src
+TARGET  = MUSIC
+OBJS    = $(music_dir)/output.o \
+          $(music_dir)/transfer_function.o \
+          $(music_dir)/Numerics.o \
+          $(music_dir)/defaults.o \
+          $(music_dir)/constraints.o \
+          $(music_dir)/random.o\
+		  $(music_dir)/convolution_kernel.o \
+          $(music_dir)/region_generator.o \
+          $(music_dir)/densities.o \
+          $(music_dir)/cosmology.o \
+          $(music_dir)/poisson.o\
+		  $(music_dir)/densities.o \
+          $(music_dir)/cosmology.o \
+          $(music_dir)/poisson.o \
+          $(music_dir)/log.o \
+          $(music_dir)/main.o \
+		  $(patsubst $(music_src)/plugins/%.cc,$(music_src)/plugins/%.o,$(wildcard $(music_src)/plugins/*.cc))
+
+##############################################################################
+# stuff for BoxLib
+BLOBJS = ""
+ifeq ($(strip $(HAVEBOXLIB)), yes)
+  IN_MUSIC = YES
+  TOP = ${PWD}/$(music_src)/plugins/nyx_plugin
+  CCbla := $(CC)
+  include $(music_src)/plugins/nyx_plugin/Make.ic
+  CC  := $(CCbla)
+  CPATHS += $(INCLUDE_LOCATIONS)
+  LPATHS += -L$(objEXETempDir)
+  BLOBJS = $(foreach obj,$(objForExecs),$(music_src)/plugins/boxlib_stuff/$(obj))
+#
+endif
+
+##############################################################################
+all: $(OBJS) $(TARGET) Makefile
+#	cd plugins/boxlib_stuff; make
+
+bla:
+	echo $(BLOBJS)
+
+blabla:
+	echo $(OBJS)
+
+ifeq ($(strip $(HAVEBOXLIB)), yes)
+$(TARGET): $(OBJS) $(music_src)/plugins/peakpatch_fortran_module.o $(music_src)/plugins/nyx_plugin/*.cpp
+	cd $(music_src)/plugins/nyx_plugin; make BOXLIB_HOME=$(BOXLIB_HOME) FFTW3=$(FFTW3) SINGLE=$(SINGLEPRECISION)
+	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(BLOBJS) -lifcore
+else
+$(TARGET): $(OBJS) $(music_src)/plugins/peakpatch_fortran_module.o
+	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) 
+endif
+
+$(music_dir)/%.o: $(music_src)/%.cc $(music_src)/*.hh Makefile 
+	$(CC) $(CFLAGS) $(CPATHS) -c $< -o $@
+
+$(music_src)/plugins/%.o: $(music_src)/plugins/%.cc $(music_src)/*.hh Makefile 
+	$(CC) $(CFLAGS) $(CPATHS) -c $< -o $@
+
+# For peakpatch:
+$(music_src)/plugins/peakpatch_fortran_module.o: $(music_src)/plugins/peakpatch_fortran_module.f90
+	$(FC) $(FFLAGS) -c $< -o $@
+
+clean_music:
+	@rm -rf $(OBJS)
+	@rm -f MUSIC
+	@rm -f $(music_src)/plugins/peakpatch_fortran_module.o
+	echo "MUSIC cleanup successful!"
+ifeq ($(strip $(HAVEBOXLIB)), yes)
+	oldpath=`pwd`
+	cd $(music_src)/plugins/nyx_plugin; make realclean BOXLIB_HOME=$(BOXLIB_HOME)
+endif
+	cd $(oldpath)
+	
 #┌──────────────────────────────────────────────────────────────────┐
 #│    ____            __              __             __             │
 #│   / __ \__________/ /_  ___  _____/ /__________ _/ /_____  _____ │
@@ -597,3 +773,6 @@ get-config:
 #│                                                                  │
 #└──────────────────────────────────────────────────────────────────┘
 
+clean:
+	make clean_pp
+	make clean_music
