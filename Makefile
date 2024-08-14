@@ -312,7 +312,7 @@ cosmo_mods = \
 
 # HPKVD MODULE AND OBJECT FILES
 hpdir  = $(ppsrcdir)/hpkvd
-hpdir_full  = $(shell pwd)/hpkvd
+hpdir_full  = $(hpdir)
 hpkvd_mods = \
 	$(hpdir)/arrays.o \
 	$(hpdir)/io.o \
@@ -550,8 +550,9 @@ OBJS = $(OBJS_h) $(OBJS_m) $(OBJS_t) $(OBJS_pm) $(OBJS_pc) $(OBJS_ctest) $(OBJS_
 	   $(OBJS_initest) $(OBJS_f)
 
 clean:
-	rm -f $(EXEC) $(OBJS) $(moddir)/*.mod $(sldir)/*.o $(rfdir)/*.o $(cosmodir)/*.o $(hpdir)/*.o \
+	@rm -f $(EXEC) $(OBJS) $(moddir)/*.mod $(sldir)/*.o $(rfdir)/*.o $(cosmodir)/*.o $(hpdir)/*.o \
 		  $(mgdir)/*.o $(exdir)/*.o $(scdir)/*.o $(tidir)/*.o $(testdir)/*.o $(hpdir)/*.so
+	@echo "Cleanup successful!"
 
 run_test: $(EXEC_ftest) $(EXEC_ctest) $(EXEC_initest)
 	./$(EXEC_ftest) 1 12345 
