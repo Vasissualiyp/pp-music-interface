@@ -741,11 +741,11 @@ blabla:
 	echo $(OBJS)
 
 ifeq ($(strip $(HAVEBOXLIB)), yes)
-$(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o $(music_plugs)/nyx_plugin/*.cpp
+$(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o $(music_plugs)/nyx_plugin/*.cpp $(LIB_h)
 	cd $(music_plugs)/nyx_plugin; make BOXLIB_HOME=$(BOXLIB_HOME) FFTW3=$(FFTW3) SINGLE=$(SINGLEPRECISION)
 	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(BLOBJS) -lifcore
 else
-$(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o
+$(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o $(LIB_h)
 	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(LDFLAGS)
 endif
 
