@@ -599,6 +599,7 @@ SINGLEPRECISION	= no
 HAVEHDF5        = yes
 HAVEBOXLIB	= no
 BOXLIB_HOME     = ${HOME}/nyx_tot_sterben/BoxLib
+music_dir= $(MUSIC_DIR)
 
 ##############################################################################
 ### compiler and path settings
@@ -610,7 +611,7 @@ ifdef NIX_BUILD # Compilation on nix
 	#-O3
     CFLAGS  =  
     LFLAGS  = -L$(GSL_LIBRARY_PATH) -lgsl -lgslcblas
-    CPATHS  = -I./src -I$(GSL_PATH) -I$(FFTW_SINGLE_PATH)/include -I$(HDF5_INCLUDE_PATH)
+    CPATHS  = -I$(music_dir)/src -I$(GSL_PATH) -I$(FFTW_SINGLE_PATH)/include -I$(HDF5_INCLUDE_PATH)
     LPATHS = -L$(GSL_PATH) -L$(FFTW_PATH)/lib -L$(HDF5_LIBRARY_PATH) -L$(MPI_PATH)
     LFLAGS += $(LPATHS) -lgsl -lgslcblas -fopenmp -lfftw3_threads -lfftw3 -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++
 	FC      = mpifort
@@ -690,8 +691,8 @@ endif
 
 ##############################################################################
 CFLAGS += $(OPT)
-music_dir= $(MUSIC_DIR)
 music_src = $(music_dir)/src
+music_plugs = $(music_src)/plugins
 TARGET  = MUSIC
 OBJS    = $(music_dir)/output.o \
           $(music_dir)/transfer_function.o \
@@ -709,20 +710,20 @@ OBJS    = $(music_dir)/output.o \
           $(music_dir)/poisson.o \
           $(music_dir)/log.o \
           $(music_dir)/main.o \
-		  $(patsubst $(music_src)/plugins/%.cc,$(music_src)/plugins/%.o,$(wildcard $(music_src)/plugins/*.cc))
+		  $(patsubst $(music_plugs)/%.cc,$(music_plugs)/%.o,$(wildcard $(music_plugs)/*.cc))
 
 ##############################################################################
 # stuff for BoxLib
 BLOBJS = ""
 ifeq ($(strip $(HAVEBOXLIB)), yes)
   IN_MUSIC = YES
-  TOP = ${PWD}/$(music_src)/plugins/nyx_plugin
+  TOP = ${PWD}/$(music_plugs)/nyx_plugin
   CCbla := $(CC)
-  include $(music_src)/plugins/nyx_plugin/Make.ic
+  include $(music_plugs)/nyx_plugin/Make.ic
   CC  := $(CCbla)
   CPATHS += $(INCLUDE_LOCATIONS)
   LPATHS += -L$(objEXETempDir)
-  BLOBJS = $(foreach obj,$(objForExecs),$(music_src)/plugins/boxlib_stuff/$(obj))
+  BLOBJS = $(foreach obj,$(objForExecs),$(music_plugs)/boxlib_stuff/$(obj))
 #
 endif
 
@@ -737,32 +738,33 @@ blabla:
 	echo $(OBJS)
 
 ifeq ($(strip $(HAVEBOXLIB)), yes)
-$(TARGET): $(OBJS) $(music_src)/plugins/peakpatch_fortran_module.o $(music_src)/plugins/nyx_plugin/*.cpp
-	cd $(music_src)/plugins/nyx_plugin; make BOXLIB_HOME=$(BOXLIB_HOME) FFTW3=$(FFTW3) SINGLE=$(SINGLEPRECISION)
+$(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o $(music_plugs)/nyx_plugin/*.cpp
+	cd $(music_plugs)/nyx_plugin; make BOXLIB_HOME=$(BOXLIB_HOME) FFTW3=$(FFTW3) SINGLE=$(SINGLEPRECISION)
 	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(BLOBJS) -lifcore
 else
-$(TARGET): $(OBJS) $(music_src)/plugins/peakpatch_fortran_module.o
+$(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o
 	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) 
 endif
 
 $(music_dir)/%.o: $(music_src)/%.cc $(music_src)/*.hh Makefile 
 	$(CC) $(CFLAGS) $(CPATHS) -c $< -o $@
 
-$(music_src)/plugins/%.o: $(music_src)/plugins/%.cc $(music_src)/*.hh Makefile 
+$(music_plugs)/%.o: $(music_plugs)/%.cc $(music_src)/*.hh Makefile 
 	$(CC) $(CFLAGS) $(CPATHS) -c $< -o $@
 
 # For peakpatch:
-$(music_src)/plugins/peakpatch_fortran_module.o: $(music_src)/plugins/peakpatch_fortran_module.f90
+#$(music_plugs)/peakpatch_fortran_module.o: $(hpdir)/hpkvd_c_wrapper.f90
+$(music_plugs)/peakpatch_fortran_module.o: $(music_plugs)/peakpatch_fortran_module.f90
 	$(FC) $(FFLAGS) -c $< -o $@
 
 clean_music:
 	@rm -rf $(OBJS)
 	@rm -f MUSIC
-	@rm -f $(music_src)/plugins/peakpatch_fortran_module.o
+	@rm -f $(music_plugs)/peakpatch_fortran_module.o
 	echo "MUSIC cleanup successful!"
 ifeq ($(strip $(HAVEBOXLIB)), yes)
 	oldpath=`pwd`
-	cd $(music_src)/plugins/nyx_plugin; make realclean BOXLIB_HOME=$(BOXLIB_HOME)
+	cd $(music_plugs)/nyx_plugin; make realclean BOXLIB_HOME=$(BOXLIB_HOME)
 endif
 	cd $(oldpath)
 	
