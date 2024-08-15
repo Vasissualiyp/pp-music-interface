@@ -474,11 +474,11 @@ OBJS_argspasstest = $(argspassing_objs)
 .SUFFIXES: .o .f .f90 .F90 .c .C
 
 # General pattern rules for Fortran files
-%.o: %.f90
+$(ppsrcdir)/%.o: $(ppsrcdir)/%.f90
 	$(F90) $(OPTIONS) -c $< -o $@
-%.o: %.f
+$(ppsrcdir)/%.o: $(ppsrcdir)/%.f
 	$(F77) $(OPTIONS) -c $< -o $@
-%.o: %.F90
+$(ppsrcdir)/%.o: $(ppsrcdir)/%.F90
 	$(F90) $(OPTIONS) -c $< -o $@
 
 # Specific directories with specific compiler options
@@ -743,7 +743,7 @@ $(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o $(music_plugs)/nyx_
 	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(BLOBJS) -lifcore
 else
 $(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o
-	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) 
+	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(LDFLAGS)
 endif
 
 $(music_dir)/%.o: $(music_src)/%.cc $(music_src)/*.hh Makefile 
