@@ -261,8 +261,8 @@ hpx_mods = \
 
 ex_mods  = $(exdir)/intreal_types.o\
 	 $(exdir)/openmpvars.o\
-	 $(exdir)/mpivars.o\
-	 $(exdir)/textlib.o\
+	 $(exdir)/mpivars_ex.o\
+	 $(exdir)/textlib_ex.o\
 	 $(exdir)/Type_Kinds.o\
 	 $(exdir)/Endian_Utility.o\
 	 $(exdir)/timing_diagnostics.o\
@@ -274,13 +274,13 @@ ex_mods  = $(exdir)/intreal_types.o\
 gvdir   = $(moddir)/GlobalVariables
 gv_mods = \
 	$(gvdir)/cosmoparams.o\
-	$(gvdir)/input_parameters.o\
+	$(gvdir)/input_parameters_gv.o\
 	$(gvdir)/params.o
 
 # READING PARAMETERS FROM INI FILE
 inidir = $(moddir)/ini_reader
 ini_mods = $(inidir)/config_reader.o
-ini_inputs = $(gv_mods) $(exdir)/mpivars.o $(hpdir)/arrays.o $(ti_mods) 
+ini_inputs = $(gv_mods) $(exdir)/mpivars_ex.o $(hpdir)/arrays.o $(ti_mods) 
 
 
 # HOMOGENEOUS ELLIPSOID 
@@ -298,7 +298,7 @@ rf_mods  = \
 	$(rfdir)/grid.o\
 	$(rfdir)/fftw_interface.o\
 	$(rfdir)/tiles.o\
-	$(rfdir)/cosmology.o\
+	$(rfdir)/cosmology_rf.o\
 	$(rfdir)/random.o\
 	$(rfdir)/pktable.o\
 	$(rfdir)/gaussian_field.o\
@@ -353,13 +353,13 @@ merge_objs = \
 pmdir  = $(ppsrcdir)/pks2map/
 p2m_mods = \
 	 $(pmdir)/profiles.o\
-	 $(exdir)/mpivars.o\
-	 $(exdir)/textlib.o\
+	 $(exdir)/mpivars_ex.o\
+	 $(exdir)/textlib_ex.o\
 	 $(rfdir)/random.o\
 	 $(pmdir)/healpixvars.o\
 	 $(pmdir)/flatskyvars.o\
 	 $(pmdir)/fitsvars.o\
-	 $(pmdir)/cosmology.o\
+	 $(pmdir)/cosmology_pm.o\
 	 $(pmdir)/bbps_profile.o\
 	 $(pmdir)/line_profile.o\
 	 $(pmdir)/integrate_profiles.o\
@@ -373,13 +373,13 @@ p2m_objs = $(pmdir)/pks2map.o
 pcdir  = $(ppsrcdir)/pks2cmb/
 p2c_mods = \
 	 $(pcdir)/profiles.o\
-	 $(exdir)/mpivars.o\
-	 $(exdir)/textlib.o\
+	 $(exdir)/mpivars_ex.o\
+	 $(exdir)/textlib_ex.o\
 	 $(rfdir)/random.o\
 	 $(pcdir)/healpixvars.o\
 	 $(pcdir)/flatskyvars.o\
 	 $(pcdir)/fitsvars.o\
-	 $(pcdir)/cosmology.o\
+	 $(pcdir)/cosmology_pc.o\
 	 $(pcdir)/bbps_profile.o\
 	 $(pcdir)/line_profile.o\
 	 $(pcdir)/integrate_profiles.o\
@@ -390,8 +390,8 @@ p2c_mods = \
 p2c_objs = $(pcdir)/pks2cmb.o 	 
 
 mmtm_mods = \
-	 $(exdir)/textlib.o\
-	 $(pmdir)/cosmology.o\
+	 $(exdir)/textlib_ex.o\
+	 $(pmdir)/cosmology_pm.o\
 	 $(pmdir)/profiles.o\
 	 $(pmdir)/bbps_profile.o\
 	 $(pmdir)/integrate_profiles.o\
@@ -400,8 +400,8 @@ mmtm_mods = \
 mmtm_objs = $(pmdir)/make_maptable.o
 
 mmtc_mods = \
-	 $(exdir)/textlib.o\
-	 $(pcdir)/cosmology.o\
+	 $(exdir)/textlib_ex.o\
+	 $(pcdir)/cosmology_pc.o\
 	 $(pcdir)/profiles.o\
 	 $(pcdir)/bbps_profile.o\
 	 $(pcdir)/integrate_profiles.o\
@@ -416,16 +416,17 @@ $(hpdir)/arrays.o : $(hpdir)/arrays_tmp.f90 $(exdir)/intreal_types.o
 	$(F90) $(OPTIONS) -c $< -o $@
 	rm -f $(hpdir)/arrays_tmp.f90
 
--include $(ppsrcdir)/Makefile.dep
+#-include $(ppsrcdir)/Makefile.dep
+#-include $(ppsrcdir)/Makefile.dep_full
 
 # TESTS
 testdir = $(ppsrcdir)/tests
 ini_test_mod = $(testdir)/read_ini_test.o
-SRCS_ftest = $(testdir)/test_args.f90 $(exdir)/textlib.f90
-$(testdir)/test_args.o: $(exdir)/textlib.o
+SRCS_ftest = $(testdir)/test_args.f90 $(exdir)/textlib_ex.f90
+$(testdir)/test_args.o: $(exdir)/textlib_ex.o
 initest_mods = $(ini_mods) $(ini_test_mod)
 
-argspassing_objs = $(testdir)/args_passing.f90 $(exdir)/mpivars.o $(exdir)/textlib.o
+argspassing_objs = $(testdir)/args_passing.f90 $(exdir)/mpivars_ex.o $(exdir)/textlib_ex.o
 $(testdir)/args_passing.o: $(argspassing_objs)
 
 OPTIONS	   =  $(OPTIMIZE) $(FFTLIB) $(FFTINC) $(MODFLAG)$(moddir) $(OMPLIB)
@@ -633,6 +634,8 @@ else # Compilation on any other machine
     FFLAGS  = -fPIC
 endif
 
+CPATHS += -I$(moddir)
+LPATHS += -L$(moddir)
 ##############################################################################
 # if you have FFTW 2.1.5 or 3.x with multi-thread support, you can enable the 
 # option MULTITHREADFFTW
@@ -753,9 +756,13 @@ $(music_plugs)/%.o: $(music_plugs)/%.cc $(music_src)/*.hh Makefile
 	$(CC) $(CFLAGS) $(CPATHS) -c $< -o $@
 
 # For peakpatch:
-#$(music_plugs)/peakpatch_fortran_module.o: $(hpdir)/hpkvd_c_wrapper.f90
-$(music_plugs)/peakpatch_fortran_module.o: $(music_plugs)/peakpatch_fortran_module.f90
-	$(FC) $(FFLAGS) -c $< -o $@
+#$(music_plugs)/peakpatch_fortran_module.o: $(music_plugs)/peakpatch_fortran_module.f90
+$(music_plugs)/peakpatch_fortran_module.o: \
+        $(hpdir)/hpkvd_c_wrapper.f90 \
+        $(exdir)/textlib_ex.o \
+        $(hpdir)/hpkvdmodule.o \
+        $(exdir)/mpivars_ex.o
+	$(F90) $(OPTIONS) -c $< -o $@
 
 clean_music:
 	@rm -rf $(OBJS)
