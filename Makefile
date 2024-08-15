@@ -225,6 +225,7 @@ endif
 #----------------------------------------------------------------------
 
 ppsrcdir=$(PP_DIR)/src
+ppworkdir=$(pwd)
 
 # GET PREPROCESSOR VALUES FROM CONFIG FILE
 CONFIG_FILE ?= ./param/parameters.ini
@@ -240,7 +241,7 @@ FFTINC = -I$(FFTW_PATH)/include
 CCOPTIONS = $(CDEFS) $(CCOPTIMIZE)
 
 moddir = $(ppsrcdir)/modules
-bindir = $(ppsrcdir)/../bin
+bindir = ./bin
 
 # EXTERNAL MODULES
 exdir = $(moddir)/External
@@ -337,7 +338,7 @@ etab_objs = $(hpdir)/run_hom_ellipse_tab.o
 
 # MERGE_PKVD MODULE AND OBJECT FILES
 mgdir  = $(ppsrcdir)/merge_pkvd
-mgdir_full  = $(shell pwd)/merge_pkvd
+mgdir_full  = $(mgdir)
 merge_mods = \
 	$(mgdir)/sort2.o\
 	$(mgdir)/arrays_params.o\
@@ -415,7 +416,7 @@ $(hpdir)/arrays.o : $(hpdir)/arrays_tmp.f90 $(exdir)/intreal_types.o
 	$(F90) $(OPTIONS) -c $< -o $@
 	rm -f $(hpdir)/arrays_tmp.f90
 
--include Makefile.dep
+-include $(ppsrcdir)/Makefile.dep
 
 # TESTS
 testdir = $(ppsrcdir)/tests
@@ -454,7 +455,7 @@ OBJS_pc = $(hpx_mods) $(p2c_mods) $(p2c_objs)
 
 # Filter generator
 EXEC_f = filter_gen
-OBJS_f = $(ini_mods) $(ini_inputs) $(ex_mods) filter_generator/filter_gen.o 
+OBJS_f = $(ini_inputs) $(ini_mods) $(ex_mods) $(ppsrcdir)/filter_generator/filter_gen.o 
 
 # TESTS FOR MODULES AND PARTS OF THE CODE
 
@@ -561,7 +562,8 @@ OBJS = $(OBJS_h) $(OBJS_m) $(OBJS_t) $(OBJS_pm) $(OBJS_pc) $(OBJS_ctest) $(OBJS_
 
 clean_pp:
 	@rm -f $(EXEC) $(OBJS) $(moddir)/*.mod $(sldir)/*.o $(rfdir)/*.o $(cosmodir)/*.o $(hpdir)/*.o \
-		  $(mgdir)/*.o $(exdir)/*.o $(scdir)/*.o $(tidir)/*.o $(testdir)/*.o $(hpdir)/*.so
+		  $(mgdir)/*.o $(exdir)/*.o $(scdir)/*.o $(tidir)/*.o $(testdir)/*.o $(gvdir)/*.o \
+	      $(hpdir)/*.so $(ini_mods) $(he_mods)
 	@echo "PeakPatch cleanup successful!"
 
 run_test: $(EXEC_ftest) $(EXEC_ctest) $(EXEC_initest)
@@ -772,6 +774,7 @@ endif
 #│ \____/_/   \___/_/ /_/\___/____/\__/_/   \__,_/\__/\____/_/      │
 #│                                                                  │
 #└──────────────────────────────────────────────────────────────────┘
+# Orchestrator Makefile Begin
 
 clean:
 	make clean_pp
