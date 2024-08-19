@@ -756,12 +756,12 @@ $(music_plugs)/%.o: $(music_plugs)/%.cc $(music_src)/*.hh Makefile
 	$(CC) $(CFLAGS) $(CPATHS) -c $< -o $@
 
 # For peakpatch:
-#$(music_plugs)/peakpatch_fortran_module.o: $(music_plugs)/peakpatch_fortran_module.f90
 $(music_plugs)/peakpatch_fortran_module.o: \
         $(hpdir)/hpkvd_c_wrapper.f90 \
         $(exdir)/textlib_ex.o \
         $(hpdir)/hpkvdmodule.o \
         $(exdir)/mpivars_ex.o
+#$(music_plugs)/peakpatch_fortran_module.o: $(music_plugs)/peakpatch_fortran_module.f90
 	$(F90) $(OPTIONS) -c $< -o $@
 
 clean_music:
