@@ -207,6 +207,10 @@
 						   cp -r $PP_DIR/example/param ./; \
 						   python $PP_DIR/python/peak-patch.py ./param/param.params"
             alias vasreb="$PP_DIR/scripts/rebase_main_to_vasdev.sh"
+            alias remake_m="make clean_music>/dev/null; make -j20 MUSIC>/dev/null"
+            alias remake_p="make clean_pp>/dev/null; make hpkvd>/dev/null"
+            alias remake="make clean>/dev/null; make hpkvd>/dev/null; make filter_gen>/dev/null; make -j20 MUSIC>/dev/null"
+            alias rerun="make clean>/dev/null; make hpkvd>/dev/null; make -j20 MUSIC>/dev/null; ./MUSIC ./param/parameters.ini --no-homel-remake"
 			# Alias for  merging
 		    vimmerge() {
 		        local file=$1
@@ -246,6 +250,12 @@ parameter file to the current dir
 
 pptest:
 Copy the source code and compile all the files
+
+remake_m, remake_p, remake:
+make clean and then make MUSIC, PeakPatch, or everything respectively
+
+rerun:
+remake and then run MUSIC with --no-homel-remake flag
 
 pphelp:
 Display this message

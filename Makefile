@@ -579,8 +579,13 @@ clean_hpkvd:
 get-config:
 	@echo "CONFIG_FILE = $(CONFIG_FILE)"
 	$(eval NMESH := $(shell sed -n 's/^nmesh\s*=\s*\([0-9]\+\).*/\1/p' $(CONFIG_FILE)))
+	$(eval LEVELMIN := $(shell sed -n 's/^levelmin\s*=\s*\([0-9]\+\).*/\1/p' $(CONFIG_FILE)))
+
+	$(if $(NMESH),,$(if $(LEVELMIN),$(eval NMESH := $(shell echo $$((2**$(LEVELMIN))))),$(error "Error: 'nmesh' or 'levelmin' must be defined in $(CONFIG_FILE)")))
+
 	$(eval N_REPLACE := $(NMESH))
 	@echo "N_REPLACE = $(N_REPLACE)"
+
 
 
 #┌───────────────────────────────────┐
