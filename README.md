@@ -26,7 +26,7 @@ export MUSIC_DIR = /path/to/music
 Change the `Makefile.systype` to the name of your system.
 Then, compile the code with the following command:
 ```
-make hpkvd; make -j### MUSIC
+make hpkvd; make filter_gen; make -j### MUSIC
 ```
 Here `###` stands for the number of parallel cores you want to use for compilation.
 You can compile MUSIC in parallel fashion, but not PeakPatch (hpkvd).
