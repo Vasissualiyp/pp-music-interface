@@ -21,6 +21,11 @@ export PP_DIR = /path/to/peakpatch
 export MUSIC_DIR = /path/to/music
 ```
 
+Then you have to copy the tables to the parent directory of this code:
+```
+cp -r $PP_DIR/tables ../tables
+```
+
 ## Compilation
 
 Change the `Makefile.systype` to the name of your system.
@@ -50,3 +55,15 @@ but since our overdensity is made by MUSIC, it is irrelevant.
 Otherwise MUSIC-generated field will not be shaped the way that PeakPatch expects it to be 
 * `boxlength` should be equal to `boxsize`. Otherwise MUSIC-generated field in a box of a certain size
 will incorrectly be interpreted by PeakPatch. You will get the results, they will just be plain wrong.
+
+Then, generate filter banks with:
+```
+./bin/filter_gen <path/to/parameters.ini>
+```
+
+Finally, you can run `hpkvd + MUSIC` with:
+```
+./MUSIC <path/to/parameters.ini>
+```
+
+To learn more about available MUSIC flags, run it without parameter file, like `./MUSIC`
