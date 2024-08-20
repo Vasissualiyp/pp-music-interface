@@ -135,6 +135,7 @@
             gsl
             cfitsio
             gcc
+			argparse # Arguments parser for C++
             mpi
 			fortran_compiler
             llvmPackages.openmp
