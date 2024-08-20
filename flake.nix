@@ -148,7 +148,7 @@
 			valgrind
 			# These are needed for tmpi
 			reptyr
-			mpich
+			#mpich
 
 			# These are needed for MUSIC
 			gfortran.cc
@@ -166,7 +166,7 @@
             export FFTW_SINGLE_PATH=${customFftw_single.dev}
             export FFTW_DOUBLE_PATH=${customFftw_double.dev}
             #export MPI_PATH=$(dirname "$(echo $PATH |  sed 's/:/\n/g' | grep -i mpi | tail -n 1)")
-            export MPI_PATH=${pkgs.mpich}
+            export MPI_PATH=${pkgs.mpi}
 
 			# MUSIC-required inputs
             export FFTW_PATH=${customFftw_single}
@@ -180,7 +180,7 @@
             export HDF5_INCLUDE_PATH=${pkgs.hdf5.dev}/include
             export HDF5_LIBRARY_PATH=${pkgs.hdf5}/lib
 			export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [ 
-															 	pkgs.mpich
+															 	pkgs.mpi
 															 	pkgs.gcc.cc.lib
 															 	#fortran_compiler.cc.lib
 														       ]

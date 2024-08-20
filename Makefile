@@ -102,7 +102,7 @@ OMPLIB = -fopenmp
 CC =  mpicc
 CXX = mpiCC
 CCOPTIMIZE = -DOMPI_SKIP_MPICXX
-LDFLAGS = -L$(MPI_PATH) -lmpifort -lmpi -ldl -lm -L$(GFORT_LPATH) -lgfortran
+LDFLAGS = -L$(MPI_PATH) -lmpi -ldl -lm -L$(GFORT_LPATH) -lgfortran
 
 DEBUG = #-Wall -g # Enable debugging
 OPTIMIZE += $(DEBUG) 
@@ -606,19 +606,20 @@ music_dir= $(MUSIC_DIR)
 ### compiler and path settings
 
 ifdef NIX_BUILD # Compilation on nix
-    CC      = mpicc -DOMPI_SKIP_MPICXX
+    CC      = mpiCC -DOMPI_SKIP_MPICXX
 	# $(GCC_PATH)/bin/g++
     OPT     = -Wno-unknown-pragmas -mtune=native 
 	#-O3
     CFLAGS  =  
     LFLAGS  = -L$(GSL_LIBRARY_PATH) -lgsl -lgslcblas
     CPATHS  = -I$(music_dir)/src -I$(GSL_PATH) -I$(FFTW_SINGLE_PATH)/include -I$(HDF5_INCLUDE_PATH)
-    LPATHS = -L$(GSL_PATH) -L$(FFTW_PATH)/lib -L$(HDF5_LIBRARY_PATH) -L$(MPI_PATH)
-    LFLAGS += $(LPATHS) -lgsl -lgslcblas -fopenmp -lfftw3_threads -lfftw3 -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++
+    LPATHS = -L$(GSL_PATH) -L$(FFTW_PATH)/lib -L$(HDF5_LIBRARY_PATH) -L$(MPI_PATH) -L$(GFORT_PATH)
+    LFLAGS += $(LPATHS) -lgsl -lgslcblas -fopenmp -lfftw3_threads -lfftw3 \
+			  -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++ 
 	FC      = mpifort
     FFLAGS  = -fPIC -DOMPI_SKIP_MPICXX
 	# Debugging flags - GDB
-    DEBUGFLAGS = -Wall -g -O0
+    DEBUGFLAGS = -Wall -g -O3
 	# Debugging flags - general
     #DEBUGFLAGS = -Wall -g
 	CFLAGS += $(DEBUGFLAGS)
@@ -746,7 +747,8 @@ $(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o $(music_plugs)/nyx_
 	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(BLOBJS) -lifcore
 else
 $(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o $(LIB_h)
-	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(LDFLAGS)
+	$(CC) $(CCOPTIONS) $(LPATHS) -L$(hpdir_full) -lhpkvd -Wl,-rpath,$(hpdir_full) $(FFTLIB)\
+		-o $@ $^ $(LFLAGS) $(LDFLAGS)
 endif
 
 $(music_dir)/%.o: $(music_src)/%.cc $(music_src)/*.hh Makefile 
