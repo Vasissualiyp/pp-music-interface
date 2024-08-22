@@ -721,9 +721,13 @@ OBJS    = $(music_dir)/output.o \
           $(music_dir)/log.o \
           $(music_dir)/main.o \
 		  $(patsubst $(music_plugs)/%.cc,$(music_plugs)/%.o,$(wildcard $(music_plugs)/*.cc))
+# PeakPatch-sourced modules
 HPKVD_mod = $(music_plugs)/hpkvd_fortran_module.o
 MPKVD_mod = $(music_plugs)/merge_pkvd_fortran_module.o
-LPP = -L$(hpdir_full) -L$(mgdir_full) -lhpkvd -lmerge_pkvd_module -Wl,-rpath,$(hpdir_full) $(FFTLIB)
+LPP = -L$(hpdir_full) -lhpkvd -lmerge_pkvd_module -Wl,-rpath,$(hpdir_full) \
+	  -L$(mgdir_full) -Wl,-rpath,$(mgdir_full) \
+	  $(FFTLIB)
+
 
 ##############################################################################
 # stuff for BoxLib
