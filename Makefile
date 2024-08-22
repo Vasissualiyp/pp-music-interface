@@ -343,7 +343,8 @@ merge_mods = \
 	$(mgdir)/sort2.o\
 	$(mgdir)/arrays_params.o\
 	$(mgdir)/exclusion.o\
-	$(mgdir)/merge_pkvd_module.o
+	$(mgdir)/merge_pkvd_module.o\
+	$(mgdir)/merge_pkvd_c_wrapper.o
 mg_main=$(mgdir)/merge_pkvd.o
 
 merge_objs = \
@@ -439,7 +440,7 @@ OBJS_h = $(ini_mods) $(ex_mods) $(gv_mods) $(sl_mods) $(he_mods) $(rf_mods) $(sc
 	   $(ti_mods) $(hpkvd_mods) $(cosmo_mods) $(hpkvd_objs) $(hpkvd_main) 
 
 EXEC_m = merge_pkvd
-LIB_m = $(mgdir)/libmergepkvd.so
+LIB_m = $(mgdir)/libmerge_pkvd_module.so
 OBJS_m = $(ini_mods) $(ex_mods) $(gv_mods) $(merge_mods) $(cosmo_mods) $(merge_objs) $(ti_mods) $(merge_main)
 
 EXEC_t = make_maptable
@@ -527,7 +528,7 @@ $(LIB_m): $(OBJS_m)
 		-L$(shell $(F90) -print-file-name=libgfortran.so | xargs dirname) \
 		-lgfortran -lquadmath -o $(LIB_m)
 $(EXEC_m): $(LIB_m) $(mg_main)
-	$(F90) $(OPTIONS) $(mg_main) -L$(mgdir_full) -lmergepkvd -Wl,-rpath,$(mgdir_full) \
+	$(F90) $(OPTIONS) $(mg_main) -L$(mgdir_full) -lmerge_pkvd_module -Wl,-rpath,$(mgdir_full) \
 	$(FFTLIB) -o $(bindir)/$(EXEC_m)
 #$(EXEC_m): $(OBJS_m)
 #	$(F90) $(OPTIONS) $(OBJS_m) -o  $(bindir)/$(EXEC_m)
@@ -720,6 +721,9 @@ OBJS    = $(music_dir)/output.o \
           $(music_dir)/log.o \
           $(music_dir)/main.o \
 		  $(patsubst $(music_plugs)/%.cc,$(music_plugs)/%.o,$(wildcard $(music_plugs)/*.cc))
+HPKVD_mod = $(music_plugs)/hpkvd_fortran_module.o
+MPKVD_mod = $(music_plugs)/merge_pkvd_fortran_module.o
+LPP = -L$(hpdir_full) -L$(mgdir_full) -lhpkvd -lmerge_pkvd_module -Wl,-rpath,$(hpdir_full) $(FFTLIB)
 
 ##############################################################################
 # stuff for BoxLib
@@ -747,12 +751,12 @@ blabla:
 	echo $(OBJS)
 
 ifeq ($(strip $(HAVEBOXLIB)), yes)
-$(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o $(music_plugs)/nyx_plugin/*.cpp $(LIB_h)
+$(TARGET): $(OBJS) $(HPKVD_mod) $(music_plugs)/nyx_plugin/*.cpp $(LIB_h)
 	cd $(music_plugs)/nyx_plugin; make BOXLIB_HOME=$(BOXLIB_HOME) FFTW3=$(FFTW3) SINGLE=$(SINGLEPRECISION)
 	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(BLOBJS) -lifcore
 else
-$(TARGET): $(OBJS) $(music_plugs)/peakpatch_fortran_module.o $(LIB_h)
-	$(CC) $(CCOPTIONS) $(LPATHS) -L$(hpdir_full) -lhpkvd -Wl,-rpath,$(hpdir_full) $(FFTLIB)\
+$(TARGET): $(OBJS) $(HPKVD_mod) $(LIB_h) 
+	$(CC) $(CCOPTIONS) $(LPATHS) $(LPP) \
 		-o $@ $^ $(LFLAGS) $(LDFLAGS)
 endif
 
@@ -763,18 +767,25 @@ $(music_plugs)/%.o: $(music_plugs)/%.cc $(music_src)/*.hh Makefile
 	$(CC) $(CFLAGS) $(CPATHS) -c $< -o $@
 
 # For peakpatch:
-$(music_plugs)/peakpatch_fortran_module.o: \
+$(HPKVD_mod): \
         $(hpdir)/hpkvd_c_wrapper.f90 \
         $(exdir)/textlib_ex.o \
         $(hpdir)/hpkvdmodule.o \
         $(exdir)/mpivars_ex.o
-#$(music_plugs)/peakpatch_fortran_module.o: $(music_plugs)/peakpatch_fortran_module.f90
+#$(HPKVD_mod): $(music_plugs)/peakpatch_fortran_module.f90
+	$(F90) $(OPTIONS) -c $< -o $@
+$(MPKVD_mod): \
+        $(mgdir)/merge_pkvd_c_wrapper.f90 \
+        $(exdir)/textlib_ex.o \
+        $(mgdir)/merge_pkvd_module.o \
+        $(exdir)/mpivars_ex.o
+#$(HPKVD_mod): $(music_plugs)/peakpatch_fortran_module.f90
 	$(F90) $(OPTIONS) -c $< -o $@
 
 clean_music:
 	@rm -rf $(OBJS)
 	@rm -f MUSIC
-	@rm -f $(music_plugs)/peakpatch_fortran_module.o
+	@rm -f $(HPKVD_mod)
 	echo "MUSIC cleanup successful!"
 ifeq ($(strip $(HAVEBOXLIB)), yes)
 	oldpath=`pwd`
