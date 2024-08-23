@@ -636,7 +636,8 @@ else # Compilation on any other machine
     CFLAGS  =  
     LFLAGS  = -lgsl -lgslcblas 
     CPATHS  = -I$(music_dir)/src -I$(HOME)/local/include -I/opt/local/include -I/usr/local/include
-    LPATHS  = -L$(HOME)/local/lib -L/opt/local/lib -L/usr/local/lib -L$(FFTW_DOUBLE_PATH)
+    LPATHS  = -L$(HOME)/local/lib -L/opt/local/lib -L/usr/local/lib -L$(FFTW_DOUBLE_PATH) \
+	      -L$(INTERFACE_DIR)/argparse
 	FC      = gfortran
     FFLAGS  = -fPIC
 endif

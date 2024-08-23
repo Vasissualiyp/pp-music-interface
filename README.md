@@ -28,6 +28,8 @@ cp -r $PP_DIR/tables ../tables
 
 ## Necessary Modules
 
+When running the interface on one of the clusters, load the modules like this before compilation/run:
+
 ### CITA
 ```
 module load openmpi/4.1.6-gcc-ucx fftw/3.3.10-openmpi-ucx gsl/2.7.1 cfitsio/4.0.0 python/3.10.2
@@ -42,6 +44,16 @@ module load openmpi/4.1.6-gcc-ucx fftw/3.3.10-openmpi-ucx gsl/2.7.1 cfitsio/4.0.
 ```
 module load NiaEnv/2019b intel/2019u4 fftw/3.3.8 cfitsio/4.4.0 python/3.6.8 intelmpi/2019u4 gsl/2.5
 ```
+
+## Building argparse
+
+Argparse is a C++ module that is relevant for functioning of MUSIC after rewrite
+(it allows for a better treatment of CLI arguments)
+
+After you set `INTERFACE_DIR` variable in your `.bashrc`, head over to the `scripts`
+directory and run `install_argparse.sh`. Don't forget to have cmake loaded before than.
+
+The script should automatically install argparse for you.
 
 ## Compilation
 
