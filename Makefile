@@ -634,7 +634,7 @@ else # Compilation on any other machine
     CC      = g++
     OPT     = -Wall -Wno-unknown-pragmas -O3 -g -mtune=native
     CFLAGS  =  
-    LFLAGS  = -lgsl -lgslcblas 
+    LFLAGS  += $(LPATHS) -lgsl -lgslcblas -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++
     CPATHS  = -I$(music_dir)/src -I$(HOME)/local/include -I/opt/local/include -I/usr/local/include \
 	      -I$(INTERFACE_DIR)/plugins/argparse/include
     LPATHS  = -L$(HOME)/local/lib -L/opt/local/lib -L/usr/local/lib -L$(FFTW_DOUBLE_PATH)
