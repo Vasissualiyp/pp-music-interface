@@ -28,10 +28,6 @@ cp -r $PP_DIR/tables ../tables
 
 ## Necessary Modules
 
-### NIX
-
-None, it should run out of the box
-
 ### CITA
 ```
 module load openmpi/4.1.6-gcc-ucx fftw/3.3.10-openmpi-ucx gsl/2.7.1 cfitsio/4.0.0 python/3.10.2
