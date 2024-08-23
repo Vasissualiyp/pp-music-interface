@@ -26,9 +26,31 @@ Then you have to copy the tables to the parent directory of this code:
 cp -r $PP_DIR/tables ../tables
 ```
 
+## Necessary Modules
+
+### NIX
+
+None, it should run out of the box
+
+### CITA
+```
+module load openmpi/4.1.6-gcc-ucx fftw/3.3.10-openmpi-ucx gsl/2.7.1 cfitsio/4.0.0 python/3.10.2
+```
+
+### CITA-starq
+```
+module load openmpi/4.1.6-gcc-ucx fftw/3.3.10-openmpi-ucx gsl/2.7.1 cfitsio/4.0.0 python/3.10.2
+```
+
+### Niagara
+```
+module load NiaEnv/2019b intel/2019u4 fftw/3.3.8 cfitsio/4.4.0 python/3.6.8 intelmpi/2019u4 gsl/2.5
+```
+
 ## Compilation
 
 Change the `Makefile.systype` to the name of your system.
+After that, load the modules.
 Then, compile the code with the following command:
 ```
 make hpkvd; make filter_gen; make -j### MUSIC
