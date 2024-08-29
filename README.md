@@ -12,6 +12,7 @@ To set the code up, you must have the following environment variables set with `
 ```
 PP_DIR (For PeakPatch directory)
 MUSIC_DIR (For MUSIC directory)
+INTERFACE_DIR (For directory of this repo)
 ```
 
 You can do it for instance, with the following command:
@@ -19,6 +20,7 @@ You can do it for instance, with the following command:
 ```
 export PP_DIR = /path/to/peakpatch
 export MUSIC_DIR = /path/to/music
+export INTERFACE_DIR = /path/to/this_repository
 ```
 
 Then you have to copy the tables to the parent directory of this code:
