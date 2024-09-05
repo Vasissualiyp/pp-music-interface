@@ -87,6 +87,8 @@ but since our overdensity is made by MUSIC, it is irrelevant.
 Otherwise MUSIC-generated field will not be shaped the way that PeakPatch expects it to be 
 * `boxlength` should be equal to `boxsize`. Otherwise MUSIC-generated field in a box of a certain size
 will incorrectly be interpreted by PeakPatch. You will get the results, they will just be plain wrong.
+* `global_redshift` must be set to 0. This forces MUSIC to create the ICs at redshift 0,
+which is what should be used in PeakPatch.
 
 Then, generate filter banks with:
 ```
