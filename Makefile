@@ -45,7 +45,7 @@ ifeq ($(SYSTYPE), "niagara")
 F90 = mpif90
 F77 = mpif77
 #OPTIMIZE =  -O0 -w -mcmodel=large -shared-intel
-OPTIMIZE =  -O4 -w -mcmodel=large -shared-intel
+OPTIMIZE =  -O4 -w -mcmodel=large -shared-intel -qopenmp
 #OPTIMIZE += -Wall -g -traceback # Enable debugging
 FFTWOMP = -lfftw3f_omp
 FFTWFLAGS = -lfftw3f_mpi -lfftw3f
