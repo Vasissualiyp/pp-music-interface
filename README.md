@@ -57,6 +57,11 @@ directory and run `install_argparse.sh`. Don't forget to have cmake loaded befor
 
 The script should automatically install argparse for you.
 
+If it doesn't work, make sure that you have C++ with a version of at least `C++2017`.
+Otherwise there might be some libraries missing.
+
+For instance, on Niagara, it is required to compile argparse with `gcc` and not `mpicc`.
+
 ## Compilation
 
 Change the `Makefile.systype` to the name of your system.
