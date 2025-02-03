@@ -52,13 +52,14 @@
           enableMpi = true;    
           mpi = pkgs.openmpi;  
         };
-		
+        
         customFftw_double = pkgs.fftw.override {
           precision = "double"; 
           enableMpi = true;     
           mpi = pkgs.openmpi;   
         };
         fortran_compiler = pkgs.gfortran13;
+
         camb = pkgs.python311Packages.buildPythonPackage rec {
           pname = "camb";
           version = "1.5.7";
@@ -87,6 +88,56 @@
           postInstall = ''
           '';
         };
+
+        class = pkgs.python311Packages.buildPythonPackage rec {
+          pname = "classy";
+          version = "3.2.3.2";
+          #format = "wheel";
+          src = pkgs.python311Packages.fetchPypi{
+            inherit pname;
+            inherit version;
+            sha256 = "sha256-GxaqQaRABTxhVXDyAYykTVdobRm8rZbZ0wPdfRU23Rc=";
+          };
+
+          format = "other";
+
+          nativeBuildInputs = with pkgs; [ python311Packages.numpy 
+                                           #python311Packages.wheel
+                                           python311Packages.cython
+                                           python311Packages.setuptools
+                                           #python311Packages.setuptools_scm
+          ];
+        
+          buildInputs = [
+            pkgs.python311Packages.numpy
+            pkgs.gsl
+          ];
+
+          buildPhase = ''
+            export CLASS_PKG_PATH="$out/lib/python3.11/site-packages/class_public"
+            #export CLASSDIR="$CLASS_PKG_PATH"
+            echo "Makefile is located at: $(pwd)"
+            ${pkgs.python311Packages.python.interpreter} setup.py build
+          '';
+
+          # Set environment variable to help locate CLASS sources
+          preBuild = ''
+            export CLASS_DIR="$PWD"
+          '';
+
+          patchPhase = ''
+            echo "Patching Makefile to set MDIR to installation path."
+            substituteInPlace $(pwd)/class_public/Makefile \
+              --replace 'CLASSDIR ?= $(MDIR)' "CLASSDIR := $out/lib/python3.11/site-packages/class_public"
+          '';
+        
+          # Override the installPhase to include the external data files
+          installPhase = ''
+              ${pkgs.python311Packages.python.interpreter} setup.py install --prefix=$out --single-version-externally-managed --record=record.txt
+          '';
+          doCheck = false;
+        };
+
         packaging = pkgs.python311Packages.buildPythonPackage rec {
           pname = "packaging";
           version = "24.1";
@@ -162,46 +213,59 @@
               --replace "find_packages()" "find_packages(include=['healpy', 'healpy.*'])"
           '';
         };
+          python = pkgs.python311Packages.python;
+          pythonEnv = (python.withPackages (ps: with ps; [
+            #healpy # HEALPY IS NOT IN NIXPKGS, SO NEED TO MANUALLY PACKAGE IT!
+            pandas
+            matplotlib
+            numpy
+            astropy
+            scipy
+            camb
+            class
+            numba
+            pyqt6
+            tkinter # Needed to show plots 
+            jupyterlab # To launch JupyterLab
+            ipykernel  # To register kernels (needed for JupyterLab)
+          ]));
       in
       {
         devShell = pkgs.mkShell {
           buildInputs = with pkgs; [
-            (python3.withPackages (ps: with ps; [
-              #healpy # HEALPY IS NOT IN NIXPKGS, SO NEED TO MANUALLY PACKAGE IT!
-              pandas
-              matplotlib
-              numpy
-              astropy
-              scipy
-			  camb
-            ]))
+            pythonEnv
             which
             gsl
             cfitsio
             gcc
-			argparse # Arguments parser for C++
+            argparse # Arguments parser for C++
             mpi
-			fortran_compiler
+            fortran_compiler
             llvmPackages.openmp
             customFftw_single
             customFftw_double
-			hdf5
+            hdf5
+            qt5.qtwayland # Needed to make python display plots on wayland
 
-			# Debuggers - can remove this if you want
-			gdb
-			valgrind
-			# These are needed for tmpi
-			reptyr
-			#mpich
+            # Non-Gaussianities
+            blas
+            lapack
 
-			# These are needed for MUSIC
-			gfortran.cc
+            # Debuggers - can remove this if you want
+            gdb
+            valgrind
+            # These are needed for tmpi
+            reptyr
+            #mpich
+
+            # These are needed for MUSIC
+            gfortran.cc
           ];
           shellHook = ''
             # PeakPatch system variables, used by peakpatchtools.py
             export PP_DIR=$(dirname $(pwd))/peakpatch
             export MUSIC_DIR=$(dirname $(pwd))/music
-			export PYTHONPATH=$PP_DIR/python:$out/lib/python3.12/site-packages:$PYTHONPATH
+            export PYTHONPATH=$PP_DIR/python:$out/lib/python3.12/site-packages:$PYTHONPATH
             export PATH=$PATH:$PP_DIR/bin:$PP_DIR/python
             # Make Python scripts executable
             chmod +x $PP_DIR/python/peak-patch*.py
@@ -212,59 +276,60 @@
             #export MPI_PATH=$(dirname "$(echo $PATH |  sed 's/:/\n/g' | grep -i mpi | tail -n 1)")
             export MPI_PATH=${pkgs.mpi}
 
-			# MUSIC-required inputs
+            # MUSIC-required inputs
             export FFTW_PATH=${customFftw_single}
             export HDF5_PATH=${pkgs.hdf5}
-		    export GFORTCC_PATH=${pkgs.gfortran.cc}
-		    export GFORT_LPATH=${fortran_compiler.cc.lib}/lib
-		    export GCC_PATH=${pkgs.gcc}
+            export GFORTCC_PATH=${pkgs.gfortran.cc}
+            export GFORT_LPATH=${fortran_compiler.cc.lib}/lib
+            export GCC_PATH=${pkgs.gcc}
 
             export GSL_INCLUDE_PATH=${pkgs.gsl.dev}/include
             export GSL_LIBRARY_PATH=${pkgs.gsl}/lib
             export HDF5_INCLUDE_PATH=${pkgs.hdf5.dev}/include
             export HDF5_LIBRARY_PATH=${pkgs.hdf5}/lib
-			export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [ 
-															 	pkgs.mpi
-															 	pkgs.gcc.cc.lib
-															 	#fortran_compiler.cc.lib
-														       ]
-								     }:$LD_LIBRARY_PATH
+            export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [ 
+                                                                pkgs.mpi
+                                                                pkgs.gcc.cc.lib
+                                                                pkgs.blas
+                                                                pkgs.lapack
+                                                                 #fortran_compiler.cc.lib
+                                                               ]
+                                     }:$LD_LIBRARY_PATH
 
 
             # This flag will let peakpatchtools.py know that we're running on nix.
             # As of April 2024, healpy isn't packaged in nixpkgs, and I wasted a whole day trying 
             # to package it myself (see above). You are welcome to continue packaging it, or
             # allow peakpatchtools.py to use healpy once it's packaged in nixpkgs
-			# This flag is also required to run MUSIC
+            # This flag is also required to run MUSIC
             export NIX_BUILD=1
+            export SYSTYPE='nix'
+
+            # Automatically register the kernel for JupyterLab to work
+            python -m ipykernel install --user --name=python-env --display-name="Python (Env)"
 
             # Create useful aliases and utility environment variables
             alias ppclean="$PP_DIR/cleanup.sh ./"
             alias ppcopy="python $PP_DIR/python/peak-patch.py ./param/param.params"
             alias ppcopyini="python $PP_DIR/python/peak-patch.py ./param/parameters.ini"
             alias pprun="python $PP_DIR/python/peak-patch.py ./param/param.params; ./bin/hpkvd 1; \
-						 chmod +x *.sh; ./*.sh"
+                         chmod +x *.sh; ./*.sh"
             alias ppcpep="cp -r $PP_DIR/example/param ./"
             alias hpkvdtest="./bin/hpkvd 1 13579 ./hpkvd_params.bin; ./bin/hpkvd 0 13579 ./hpkvd_params.bin"
             alias hpkvdtestini="./bin/hpkvd 1 13579 ./param/parameters.ini; ./bin/hpkvd 0 13579 ./param/parameters.ini"
-			alias pptest="$PP_DIR/cleanup.sh ./; \
-						   cp -r $PP_DIR/example/param ./; \
-						   python $PP_DIR/python/peak-patch.py ./param/param.params"
+            alias pptest="$PP_DIR/cleanup.sh ./; \
+                           cp -r $PP_DIR/example/param ./; \
+                           python $PP_DIR/python/peak-patch.py ./param/param.params"
             alias vasreb="$PP_DIR/scripts/rebase_main_to_vasdev.sh"
             alias remake_m="make clean_music>/dev/null; make -j20 MUSIC>/dev/null"
             alias remake_p="make clean_pp>/dev/null; make hpkvd>/dev/null; make merge_pkvd>/dev/null; make filter_gen>/dev/null;"
             alias remake="make clean_pp>/dev/null; make hpkvd>/dev/null; make merge_pkvd>/dev/null; \
-			              make filter_gen>/dev/null; make -j20 MUSIC>/dev/null"
+                          make filter_gen>/dev/null; make -j20 MUSIC>/dev/null"
             alias rerun="make clean>/dev/null; make hpkvd>/dev/null; \
-		                 make merge_pkvd>/dev/null; make filter_gen>/dev/null; \
-						 make -j20 MUSIC>/dev/null; ./bin/filter_gen ./param/parameters.ini; \
-						 ./MUSIC ./param/parameters.ini --no-homel-remake"
-			# Alias for  merging
-		    vimmerge() {
-		        local file=$1
-		        vimdiff "$file" <(git show 070640d2e03466a8bc20269464c650d18c938d75:"$file")
-		    }
-
+                         make merge_pkvd>/dev/null; make filter_gen>/dev/null; \
+                         make -j20 MUSIC>/dev/null; ./bin/filter_gen ./param/parameters.ini; \
+                         ./MUSIC ./param/parameters.ini --no-homel-remake"
+            # Alias for  merging
             export PP_ALIASES='
 Useful aliases that you can run in directory where you
 will be running PeakPatch:
@@ -312,14 +377,14 @@ vasreb:
 Brings main branch up to date with vasdev and pushes all the changes. 
 Use with CAUTION! DO NOT USE if not sure if main was changed!
 '
-		    alias pphelp="echo \"$PP_ALIASES\""
+            alias pphelp="echo \"$PP_ALIASES\""
             # Welcome message
-			echo "
+            echo "
 #########################################################
 ########  Welcome to PeakPatch-MUSIC Interface! #########
 #########################################################
-		    "
-			echo "$PP_ALIASES"
+            "
+            echo "$PP_ALIASES"
           '';
       };
     }
