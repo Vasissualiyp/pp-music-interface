@@ -38,11 +38,18 @@ def create_TFs_from_parameter_file(run_dir,
     try:
         class_file_music = run.transfer_file
     except:
-        raiseExceptions(f"transfer_file value not present in the parameter file!")
+        raise ImportError(f"transfer_file value not present in the parameter file!")
 
     # Change the directories of the tables
-    class_file_pp = os.path.join(run_dir, "tables", class_file_pp)
-    class_file_music = os.path.join(run_dir, "tables", class_file_pp)
+    pp_tables_dir = os.path.join(run_dir, "tables")
+    class_file_pp = os.path.join(pp_tables_dir, class_file_pp)
+    try:
+        os.makedirs(pp_tables_dir, exist_ok=True)
+    except OSError as e:
+        raise InterruptedError(f"Could not create directory {pp_tables_dir}") from e
+    print(f"pp_tables_dir: {pp_tables_dir}")
+    print(f"class_file_pp: {class_file_pp}")
+    class_file_music = os.path.join(run_dir, class_file_music)
 
     #Save CLASS-generated PS in PeakPatch format
     _ = TFCalc.create_and_save_TF_class(class_file_pp)
