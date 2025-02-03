@@ -45,7 +45,7 @@ ifeq ($(SYSTYPE), "niagara")
 F90 = mpif90
 F77 = mpif77
 #OPTIMIZE =  -O0 -w -mcmodel=large -shared-intel
-OPTIMIZE =  -O4 -w -mcmodel=large -shared-intel -qopenmp
+OPTIMIZE =  -O4 -w -mcmodel=large -shared-intel -qopenmp -fno-unsafe-math-optimizations -frounding-math -fsignaling-nans
 #OPTIMIZE += -Wall -g -traceback # Enable debugging
 FFTWOMP = -lfftw3f_omp
 FFTWFLAGS = -lfftw3f_mpi -lfftw3f
@@ -57,13 +57,17 @@ FFTW_PATH = $(SCINET_FFTW_MPI_ROOT)
 #CC = mpicc
 #CXX = mpiCC
 CCOPTIMIZE = -w -fno-exceptions
+
+INST_FFLAGS=-fpp # -traceback
+INST_LIBS = -mkl -lm
+BLAS=-shared -mkl
 endif
 
 #----------------------------------------------------------------------
 # OPTIONS FOR RUNNING ON SCINET-NIAGARA WITH GCC COMPILERS (UNTESTED)
 #----------------------------------------------------------------------
 
-ifeq ($(SYSTYPE),"niagara-gcc")
+ifeq ($(SYSTYPE),"niag-gcc")
 
 F90 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
 F77 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
@@ -82,6 +86,9 @@ CCOPTIMIZE = -Wall -DOMPI_SKIP_MPICXX
 #LDFLAGS = -L$(MPI_PATH)/lib -Wl,-rpath,$(MPI_PATH)/lib -lmpi #-ldl -lm 
 LDFLAGS = -lmpi -ldl -lm 
 
+INST_FFLAGS=-cpp -ffree-line-length-none -fbacktrace
+INST_LIBS = -llapack -lblas -lm
+BLAS = -shared -llapack -lblas -lm
 endif
 
 #----------------------------------------------------------------------
@@ -102,12 +109,16 @@ OMPLIB = -fopenmp
 CC =  mpicc
 CXX = mpiCC
 CCOPTIMIZE = -DOMPI_SKIP_MPICXX
-LDFLAGS = -L$(MPI_PATH) -lmpi -ldl -lm -L$(GFORT_LPATH) -lgfortran
+LDFLAGS = -L$(MPI_PATH) -lmpifort -lmpi -ldl -lm \
+		  -L$(GFORT_LPATH) -lgfortran
 
 DEBUG = #-Wall -g # Enable debugging
 OPTIMIZE += $(DEBUG) 
 CCOPTIMIZE += $(DEBUG) 
 
+INST_FFLAGS=-cpp -ffree-line-length-none -fbacktrace
+INST_LIBS = -llapack -lblas -lm
+BLAS = -shared -lblas -llapack -lm
 endif
 
 # Notes [Vasilii Pustovoit]
@@ -138,6 +149,10 @@ CC =  mpicc
 CXX = mpiCC
 CCOPTIMIZE = -Wall -DOMPI_SKIP_MPICXX
 LDFLAGS = -L$(MPI_PATH) -lmpif -lmpi -ldl -lm 
+
+INST_FFLAGS=-cpp -ffree-line-length-none -fbacktrace
+INST_LIBS = -llapack -lblas -lm
+BLAS = -shared -llapack -lblas -lm
 endif
 
 # Notes [Vasilii Pustovoit]
@@ -169,6 +184,10 @@ CC =  mpicc
 CXX = mpiCC
 CCOPTIMIZE = -Wall -DOMPI_SKIP_MPICXX
 LDFLAGS = -L$(MPI_PATH) -lmpif -lmpi -ldl -lm 
+
+INST_FFLAGS=-cpp -ffree-line-length-none -fbacktrace
+INST_LIBS = -llapack -lblas -lm
+BLAS = -shared -llapack -lblas -lm
 endif
 
 # Notes [Vasilii Pustovoit]
@@ -196,6 +215,9 @@ OMPLIB = -openmp
 CC = mpicc
 CXX = mpiCC
 CCOPTIMIZE = -w 
+
+INST_FFLAGS=-cpp -ffree-line-length-none -fbacktrace
+INST_LIBS = -llapack -lblas -lm
 endif
 
 #----------------------------------------------------------------------
@@ -204,7 +226,7 @@ endif
 
 ifeq ($(SYSTYPE), "darwin")
 F90 = mpif90 -lstdc++ -lmpi_cxx -DDARWIN
-F77 = mpif77
+F77 = mpif77 
 OPTIMIZE =  -O4 -w #
 #OPTIMIZE += -Wall -g # Enable debugging
 FFTWOMP = -lfftw3f_omp
@@ -518,6 +540,7 @@ $(testdir)/%.o: $(testdir)/%.c
 $(LIB_h): $(OBJS_h) # hpkvd libarary. Has fortran and c wrappers
 	$(F90) -shared $(OPTIONS) $(OBJS_h) $(FFTLIB) \
 		-L$(shell $(F90) -print-file-name=libgfortran.so | xargs dirname) \
+		$(BLAS) \
 		-lgfortran -lquadmath -o $(LIB_h)
 $(EXEC_h): $(LIB_h) $(hpkvd_main) 
 	$(F90) $(OPTIONS) $(hpkvd_main) -L$(hpdir_full) -lhpkvd -Wl,-rpath,$(hpdir_full) \
