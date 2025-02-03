@@ -109,7 +109,7 @@ OMPLIB = -fopenmp
 CC =  mpicc
 CXX = mpiCC
 CCOPTIMIZE = -DOMPI_SKIP_MPICXX
-LDFLAGS = -L$(MPI_PATH) -lmpifort -lmpi -ldl -lm \
+LDFLAGS = -L$(MPI_PATH) -lmpi -ldl -lm \
 		  -L$(GFORT_LPATH) -lgfortran
 
 DEBUG = #-Wall -g # Enable debugging
@@ -609,6 +609,7 @@ get-config:
 
 	$(eval N_REPLACE := $(NMESH))
 	@echo "N_REPLACE = $(N_REPLACE)"
+pp_all: $(EXEC_h) $(EXEC_f) $(EXEC_m)
 
 
 
@@ -785,7 +786,7 @@ $(TARGET): $(OBJS) $(HPKVD_mod) $(music_plugs)/nyx_plugin/*.cpp $(LIB_h)
 else
 $(TARGET): $(OBJS) $(HPKVD_mod) $(LIB_h) 
 	$(CC) $(CCOPTIONS) $(LPATHS) $(LPP) \
-		-o $@ $^ $(LFLAGS) $(LDFLAGS)
+		-o $(bindir)/$(TARGET) $^ $(LFLAGS) $(LDFLAGS)
 endif
 
 $(music_dir)/%.o: $(music_src)/%.cc $(music_src)/*.hh Makefile 
@@ -812,7 +813,7 @@ $(MPKVD_mod): \
 
 clean_music:
 	@rm -rf $(OBJS)
-	@rm -f MUSIC
+	@rm -f $(bindir)/$(TARGET)
 	@rm -f $(HPKVD_mod)
 	echo "MUSIC cleanup successful!"
 ifeq ($(strip $(HAVEBOXLIB)), yes)
