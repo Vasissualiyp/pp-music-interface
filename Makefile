@@ -42,6 +42,7 @@ RUNDIR := $(shell dirname $(shell pwd))
 #--------------------------------------------------------------------------
 
 ifeq ($(SYSTYPE), "niagara")
+COMPILER_FLAGS = 
 F90 = mpif90
 F77 = mpif77
 #OPTIMIZE =  -O0 -w -mcmodel=large -shared-intel
@@ -54,8 +55,8 @@ OMPLIB = -fopenmp
 
 FFTW_PATH = $(SCINET_FFTW_MPI_ROOT)
 
-#CC = mpicc
-#CXX = mpiCC
+CC = mpicc
+CXX = mpiCC
 CCOPTIMIZE = -w -fno-exceptions
 
 INST_FFLAGS=-fpp # -traceback
@@ -97,8 +98,9 @@ endif
 
 ifeq ($(SYSTYPE),"nix")
 
-F90 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
-F77 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
+COMPILER_FLAGS = -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
+F90 = mpifort
+F77 = mpifort
 OPTIMIZE = -O3 -mcmodel=large -fno-common #-Wno-deprecated -Wextra
 FFTWFLAGS = -lstdc++ -lfftw3f_mpi -lfftw3f 
 FFTWOMP = -lfftw3f_omp 
@@ -239,6 +241,8 @@ CC = mpicc
 CXX = mpic++ -DDARWIN
 CCOPTIMIZE = -w
 endif
+
+F90 += $(COMPILER_FLAGS)
 
 #----------------------------------------------------------------------
 #----------------------------------------------------------------------
@@ -636,7 +640,7 @@ music_dir= $(MUSIC_DIR)
 ### compiler and path settings
 
 ifdef NIX_BUILD # Compilation on nix
-    CC      = mpiCC -DOMPI_SKIP_MPICXX
+    CC      = $(CXX) $(COMPILER_FLAGS)
 	# $(GCC_PATH)/bin/g++
     OPT     = -Wno-unknown-pragmas -mtune=native 
 	#-O3
@@ -646,8 +650,7 @@ ifdef NIX_BUILD # Compilation on nix
     LPATHS = -L$(GSL_PATH) -L$(FFTW_PATH)/lib -L$(HDF5_LIBRARY_PATH) -L$(MPI_PATH) -L$(GFORT_PATH)
     LFLAGS += $(LPATHS) -lgsl -lgslcblas -fopenmp -lfftw3_threads -lfftw3 \
 			  -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++ 
-	FC      = mpifort
-    FFLAGS  = -fPIC -DOMPI_SKIP_MPICXX
+    FFLAGS  = -fPIC $(COMPILER_FLAGS)
 	# Debugging flags - GDB
     DEBUGFLAGS = -Wall -g -O3
 	# Debugging flags - general
@@ -662,7 +665,6 @@ else # Compilation on any other machine
     CPATHS  = -I$(music_dir)/src -I$(HOME)/local/include -I/opt/local/include -I/usr/local/include \
 	      -I$(INTERFACE_DIR)/plugins/argparse/include
     LPATHS  = -L$(HOME)/local/lib -L/opt/local/lib -L/usr/local/lib -L$(FFTW_DOUBLE_PATH)
-	FC      = gfortran
     FFLAGS  = -fPIC
 endif
 
