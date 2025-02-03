@@ -47,20 +47,14 @@ module load openmpi/4.1.6-gcc-ucx fftw/3.3.10-openmpi-ucx gsl/2.7.1 cfitsio/4.0.
 module load NiaEnv/2019b intel/2019u4 fftw/3.3.8 cfitsio/4.4.0 python/3.6.8 intelmpi/2019u4 gsl/2.5
 ```
 
-## Building argparse
+## Building class
 
-Argparse is a C++ module that is relevant for functioning of MUSIC after rewrite
-(it allows for a better treatment of CLI arguments)
+You should install classy python package. However, using `pip install classy` on Nigara,
+installs it improperly and one cannot use it.
 
-After you set `INTERFACE_DIR` variable in your `.bashrc`, head over to the `scripts`
-directory and run `install_argparse.sh`. Don't forget to have cmake loaded before than.
+That's why I wrote script to install class in case you have such a case - look into `scripts` directory.
 
-The script should automatically install argparse for you.
-
-If it doesn't work, make sure that you have C++ with a version of at least `C++2017`.
-Otherwise there might be some libraries missing.
-
-For instance, on Niagara, it is required to compile argparse with `gcc` and not `mpicc`.
+And make sure that you load gcc before you try doing anything with it!
 
 ## Compilation
 
