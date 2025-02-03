@@ -639,33 +639,29 @@ music_dir= $(MUSIC_DIR)
 ##############################################################################
 ### compiler and path settings
 
+# Debugging flags - GDB
+DEBUGFLAGS = -Wall -g -O3
+# Debugging flags - general
+#DEBUGFLAGS = -Wall -g
+
+CC      = $(CXX) $(COMPILER_FLAGS)
+OPT     = $(DEBUGFLAGS) -Wno-unknown-pragmas -mtune=native 
+
+FFLAGS  = -fPIC $(COMPILER_FLAGS)
+CFLAGS  =  
+LFLAGS += $(LPATHS) -lgsl -lgslcblas -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++
+CPATHS = -I$(music_dir)/src 
+
 ifdef NIX_BUILD # Compilation on nix
-    CC      = $(CXX) $(COMPILER_FLAGS)
-	# $(GCC_PATH)/bin/g++
-    OPT     = -Wno-unknown-pragmas -mtune=native 
-	#-O3
-    CFLAGS  =  
-    LFLAGS  = -L$(GSL_LIBRARY_PATH) -lgsl -lgslcblas
-    CPATHS  = -I$(music_dir)/src -I$(GSL_PATH) -I$(FFTW_SINGLE_PATH)/include -I$(HDF5_INCLUDE_PATH)
-    LPATHS = -L$(GSL_PATH) -L$(FFTW_PATH)/lib -L$(HDF5_LIBRARY_PATH) -L$(MPI_PATH) -L$(GFORT_PATH)
-    LFLAGS += $(LPATHS) -lgsl -lgslcblas -fopenmp -lfftw3_threads -lfftw3 \
-			  -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++ 
-    FFLAGS  = -fPIC $(COMPILER_FLAGS)
-	# Debugging flags - GDB
-    DEBUGFLAGS = -Wall -g -O3
-	# Debugging flags - general
-    #DEBUGFLAGS = -Wall -g
-	CFLAGS += $(DEBUGFLAGS)
+	# Removing lines below doesn't break MUSIC for  some reason
+    #CPATHS += -I$(FFTW_SINGLE_PATH)/include -I$(HDF5_INCLUDE_PATH)
+    #LPATHS  = -L$(FFTW_PATH)/lib -L$(HDF5_LIBRARY_PATH) -L$(MPI_PATH) -L$(GFORT_PATH)
+    LFLAGS += -fopenmp -lfftw3_threads -lfftw3
 	FFLAGS += $(DEBUGFLAGS) -fbacktrace
 else # Compilation on any other machine
-    CC      = g++
-    OPT     = -Wall -Wno-unknown-pragmas -O3 -g -mtune=native
-    CFLAGS  =  
-    LFLAGS  += $(LPATHS) -lgsl -lgslcblas -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++
-    CPATHS  = -I$(music_dir)/src -I$(HOME)/local/include -I/opt/local/include -I/usr/local/include \
-	      -I$(INTERFACE_DIR)/plugins/argparse/include
+    CPATHS += -I$(HOME)/local/include -I/opt/local/include -I/usr/local/include \
+	          -I$(INTERFACE_DIR)/plugins/argparse/include
     LPATHS  = -L$(HOME)/local/lib -L/opt/local/lib -L/usr/local/lib -L$(FFTW_DOUBLE_PATH)
-    FFLAGS  = -fPIC
 endif
 
 CPATHS += -I$(moddir)
