@@ -5,6 +5,7 @@ if [[ "$INTERFACE_DIR" == "" ]]; then
 	echo "Please, set INTERFACE_DIR environment variable"
 	exit 1
 fi
+gcc --verstion || { echo "Plese, load gcc module before proceeding" ; exit 1; }
 
 # Python venv setup
 python -m venv env
