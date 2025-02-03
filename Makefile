@@ -56,12 +56,13 @@ OMPLIB = -fopenmp
 FFTW_PATH = $(SCINET_FFTW_MPI_ROOT)
 
 CC = mpicc
-CXX = mpiCC
+CXX = mpicxx
 CCOPTIMIZE = -w -fno-exceptions
 
 INST_FFLAGS=-fpp # -traceback
 INST_LIBS = -mkl -lm
 BLAS=-shared -mkl
+LDFLAGS = -lmpi -ldl -lm -lifcoremt
 endif
 
 #----------------------------------------------------------------------
@@ -657,13 +658,13 @@ ifdef NIX_BUILD # Compilation on nix
     #CPATHS += -I$(FFTW_SINGLE_PATH)/include -I$(HDF5_INCLUDE_PATH)
     #LPATHS  = -L$(FFTW_PATH)/lib -L$(HDF5_LIBRARY_PATH) -L$(MPI_PATH) -L$(GFORT_PATH)
     LFLAGS += -fopenmp -lfftw3_threads -lfftw3
-	FFLAGS += $(DEBUGFLAGS) -fbacktrace
 else # Compilation on any other machine
     CPATHS += -I$(HOME)/local/include -I/opt/local/include -I/usr/local/include \
 	          -I$(INTERFACE_DIR)/plugins/argparse/include
     LPATHS  = -L$(HOME)/local/lib -L/opt/local/lib -L/usr/local/lib -L$(FFTW_DOUBLE_PATH)
 endif
 
+FFLAGS += $(DEBUGFLAGS) -fbacktrace
 CPATHS += -I$(moddir)
 LPATHS += -L$(moddir)
 ##############################################################################
