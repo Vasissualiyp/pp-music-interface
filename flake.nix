@@ -283,10 +283,6 @@
             export GFORT_LPATH=${fortran_compiler.cc.lib}/lib
             export GCC_PATH=${pkgs.gcc}
 
-            export GSL_INCLUDE_PATH=${pkgs.gsl.dev}/include
-            export GSL_LIBRARY_PATH=${pkgs.gsl}/lib
-            export HDF5_INCLUDE_PATH=${pkgs.hdf5.dev}/include
-            export HDF5_LIBRARY_PATH=${pkgs.hdf5}/lib
             export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [ 
                                                                 pkgs.mpi
                                                                 pkgs.gcc.cc.lib
