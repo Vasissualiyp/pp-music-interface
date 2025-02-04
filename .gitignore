@@ -1,4 +1,15 @@
 bin/
+env/
+src/
+fields/
+tables/
 MUSIC
 wnoise.*
 *.swp
+Makefile.systype
+*.dat
+class_public/
+dump_transfer.txt
+input_powerspec.txt
+param/parameters.ini_log.txt
+wnoise_*
