@@ -1,9 +1,11 @@
 from create_TF import calculate_TF 
 from peakpatchtools import PeakPatch
 import os
+from pathlib import Path
 
 def create_TFs_from_parameter_file(run_dir,
                                    extrap_params,
+                                   tables_dir_outside=True,
                                    params_file_name="parameters.ini", 
                                    debug_pptools=False,
                                    log=False):
@@ -13,6 +15,7 @@ def create_TFs_from_parameter_file(run_dir,
     Args:
         run_dir (str): directory of the run
         extrap_params (extrapParams): Extrapolation parameters
+        tables_dir_outside (bool): whether the tables dir for PeakPatch is inside of rundir or outside of it
         params_file_name (str): name of the parameters file
         bebug_pptools (bool): whether to printout debug info for peakpatchtools
         log (bool): whether to printout logs
@@ -33,15 +36,19 @@ def create_TFs_from_parameter_file(run_dir,
     # Get the names of the tables from the parameter file
     class_file_pp = run.pkfile
     music_transfer = run.transfer
-    if music_transfer.lower() != "camb":
-        raise ValueError(f"Value of tranfer in the parmaeter file must be camb, otherwise the table won't be read!")
+    camb_file = "camb_file"
+    if music_transfer.lower() != camb_file:
+        raise ValueError(f"Value of tranfer in the parmaeter file must be {camb_file}, otherwise the table won't be read!")
     try:
         class_file_music = run.transfer_file
     except:
         raise ImportError(f"transfer_file value not present in the parameter file!")
 
     # Change the directories of the tables
-    pp_tables_dir = os.path.join(run_dir, "tables")
+    if tables_dir_outside:
+        pp_tables_dir = os.path.join(Path(run_dir).parent, "", "tables")
+    else:
+        pp_tables_dir = os.path.join(run_dir, "tables")
     class_file_pp = os.path.join(pp_tables_dir, class_file_pp)
     try:
         os.makedirs(pp_tables_dir, exist_ok=True)
