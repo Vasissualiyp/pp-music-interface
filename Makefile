@@ -35,7 +35,8 @@ CURRENT_DIR := $(shell pwd)
 # Need to add src/hpkvd into library path, so that we can use hpkvd as a module
 export LD_LIBRARY_PATH := $(CURRENT_DIR)/hpkvd:$(LD_LIBRARY_PATH)
 # Parent of current directory is the run directory
-RUNDIR := $(shell dirname $(shell pwd))
+#RUNDIR := $(shell dirname $(shell pwd))
+RUNDIR := $(shell pwd)
 
 #--------------------------------------------------------------------------
 # OPTIONS FOR RUNNING ON SCINET-NIAGARA WITH INTEL COMPILERS (RECOMMENDED)
