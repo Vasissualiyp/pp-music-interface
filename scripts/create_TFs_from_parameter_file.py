@@ -2,6 +2,7 @@ from create_TF import calculate_TF
 from peakpatchtools import PeakPatch
 import os
 from pathlib import Path
+import argparse
 
 def create_TFs_from_parameter_file(run_dir,
                                    extrap_params,
@@ -75,11 +76,21 @@ class extrapParams():
 
 if __name__ == "__main__":
 
+
+    parser = argparse.ArgumentParser(prog="TF creator from MUSIC+PP Parameter files",
+                                     description="Creates required transfer function tables" +
+                                                 "from the given parameter file")
+    parser.add_argument("run_dir", default=".")
+    parser.add_argument("params_file_name", default="parameters.ini")
+    args = parser.parse_args()
+
     log = True
     debug_pptools = False
 
-    run_dir = "."
-    params_file_name = "parameters.ini"
+    #run_dir = "."
+    #params_file_name = "parameters.ini"
+    run_dir = args.run_dir
+    params_file_name = args.params_file_name
     #extrapolation_scheme = "analytic"
     extrapolation_scheme = "loglin_extrap"
     minkh = 1e-6
