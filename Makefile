@@ -586,7 +586,7 @@ $(EXEC_argspasstest): $(OBJS_argspasstest)
 
 EXEC = $(bindir)/$(EXEC_h) $(bindir)/$(EXEC_m) \
 	   $(bindir)/$(EXEC_t) $(bindir)/$(EXEC_pm) $(bindir)/$(EXEC_pc) $(LIB_h) $(LIB_m)\
-	   $(EXEC_ctest) $(EXEC_ftest) $(EXEC_initest) $(EXEC_argspasstest) $(EXEC_f)
+	   $(EXEC_ctest) $(EXEC_ftest) $(EXEC_initest) $(EXEC_argspasstest) $(bindir)/$(EXEC_f)
 	   
 OBJS = $(OBJS_h) $(OBJS_m) $(OBJS_t) $(OBJS_pm) $(OBJS_pc) $(OBJS_ctest) $(OBJS_ftest) \
 	   $(OBJS_initest) $(OBJS_f)

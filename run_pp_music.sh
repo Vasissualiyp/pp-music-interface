@@ -1,17 +1,18 @@
 #!/bin/bash 
-#SBATCH -p debug
+##SBATCH -p debug
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
 #SBATCH --ntasks-per-node=2
 #SBATCH --cpus-per-task=1
-#SBATCH --time=1:00:00
+#SBATCH --time=6:00:00
 #SBATCH --job-name=pp_mus_z0
 #SBATCH --output=output_pp_mus_z0
 
 # General flags to enable/disable certain script behaviors
-CREATE_TF=0
+CREATE_Z_PARAMS=1
+CREATE_TF=1
 RUN_PP=1
-RUN_MUSIC=0
+RUN_MUSIC=1
 COMPILE=0
 
 PP_DIR="/scratch/m/murray/vasissua/PeakPatch/peakpatch"
@@ -36,6 +37,7 @@ mkdir bin output logfiles fields
 create_params_at_z() {
 	local Z_RUN="$1"
     module load python
+	echo "Creating z=$Z_RUN parameter file from ${INIT_PARAMS_PATH}..."
     $PP_DIR/python/params_tools/change_params_to_z.sh "$Z_RUN" "$INIT_PARAMS_PATH"
 }
 create_tfs_at_z() {
@@ -53,7 +55,9 @@ create_TF_tables() {
 }
 
 setup_output_files_from_z() {
-    local params=$(get_params_from_z $1)
+	local Z_RUN="$1"
+	echo "Z_RUN in setup_output_files_from_z: $Z_RUN"
+    local params=$(get_params_from_z "$Z_RUN")
 	echo "PARAMS: $params"
 	stdout=$(get_stdout_from_params $params)
 	stderr=$(get_stderr_from_params $params)
@@ -70,6 +74,7 @@ setup_output_files_from_z() {
 ####################################
 
 get_params_from_z() {
+  red="$1"
   echo "./param/parameters_z${red}.ini"
 }
 
@@ -119,7 +124,9 @@ compile_pp_music_from_params() {
 	make hpkvd      CONFIG_FILE="$params" 2>> $stderr 1>> $stdout
     make filter_gen CONFIG_FILE="$params" 2>> $stderr 1>> $stdout
     make merge_pkvd CONFIG_FILE="$params" 2>> $stderr 1>> $stdout
-    make -j20 MUSIC 2>> $stderr 1>> $stdout
+	if [[ "$RUN_MUSIC" == "1" ]]; then
+        make -j20 MUSIC 2>> $stderr 1>> $stdout
+	fi
 }
 
 ###################################
@@ -147,7 +154,7 @@ run_music_from_params_at_z() {
   stdout=$(get_stdout_from_params $params)
   stderr=$(get_stderr_from_params $params)
   module load $run_modules
-  mpirun ./bin/MUSIC "$params" 2>> $stderr 1>> $stdout
+  mpirun -np 1 ./bin/MUSIC "$params" 2>> $stderr 1>> $stdout
 }
 
 run_hpkvd_from_params_file() {
@@ -167,23 +174,25 @@ run_hpkvd_from_params_file() {
     # Set OpenMP threading
     export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
     
-    ./bin/filter_gen "$params" 2>> $stderr 1>> $stdout
+    mpirun ./bin/filter_gen "$params" 2>> $stderr 1>> $stdout
     
     # MPI run of hierarchical peak/void finding script hpkvd.f90
 	echo "Running hpkvd from parameter file: $params"
-    ./bin/hpkvd 1 $seed "$params" 2>> $stderr 1>> $stdout
-    ./bin/hpkvd 0 $seed "$params" 2>> $stderr 1>> $stdout
+    mpirun ./bin/hpkvd 1 $seed "$params" 2>> $stderr 1>> $stdout
+    mpirun ./bin/hpkvd 0 $seed "$params" 2>> $stderr 1>> $stdout
     
     # MPI run of merging & exclusion script merge_pkvd.f90
 	echo "Running merge_pkvd from parameter file: $params"
-    ./bin/merge_pkvd $seed "$params" 2>> $stderr 1>> $stdout
+    mpirun ./bin/merge_pkvd $seed "$params" 2>> $stderr 1>> $stdout
 }
 
 run_music_pp_at_z() {
     Z_RUN="$1"
+	echo "Z_RUN in run_music_pp: $Z_RUN"
 	setup_output_files_from_z "$Z_RUN"
-    create_params_at_z "$Z_RUN"
-
+	if [[ "$CREATE_Z_PARAMS" == "1" ]]; then
+        create_params_at_z "$Z_RUN"
+	fi
 	if [[ "$CREATE_TF" == "1" ]]; then
         create_tfs_at_z "$Z_RUN"
 	fi
@@ -198,4 +207,9 @@ run_music_pp_at_z() {
 	fi
 }
 
+#run_music_pp_at_z 0
 run_music_pp_at_z 0
+run_music_pp_at_z 5
+run_music_pp_at_z 8
+run_music_pp_at_z 11
+run_music_pp_at_z 13
