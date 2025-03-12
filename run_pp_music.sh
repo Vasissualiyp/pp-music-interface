@@ -10,12 +10,12 @@
 
 # General flags to enable/disable certain script behaviors
 CREATE_Z_PARAMS=0
-CREATE_ZOOMIN_ICS=1
 CREATE_TF=0
 RUN_PP=0
 RUN_MUSIC=0
 COMPILE=0
-HYDRO=0
+CREATE_ZOOMIN_ICS=1
+RUN_MUSIC_ZOOMIN=1
 
 PP_DIR="/scratch/m/murray/vasissua/PeakPatch/peakpatch"
 RUNDIR=$INTERFACE_DIR
@@ -168,7 +168,8 @@ replace_parameter() {
 create_zoomin_ics() {
   red="$1"
   levelmax="$2"
-  zoomin_out_fname="$3"
+  zstart="$3"
+  zoomin_out_fname="$4"
   export HYDRO=0
   (
     echo "Moving the files for redshift $red into ./z$red ..."
@@ -189,6 +190,7 @@ create_zoomin_ics() {
   replace_parameter "$params_hydro" "calculate_displacements" "yes"
   replace_parameter "$params_hydro" "calculate_potential" "yes"
   replace_parameter "$params_hydro" "baryons" "yes"
+  replace_parameter "$params_hydro" "zstart" "$zstart"
   replace_parameter "$params_hydro" "format" "gadget2"
   replace_parameter "$params_hydro" "levelmax" "$levelmax"
   replace_parameter "$params_hydro" "filename" "$zoomin_out_fname"
@@ -241,7 +243,9 @@ run_hpkvd_from_params_file() {
 run_music_pp_at_z() {
     Z_RUN="$1"
 	levelmax=11
+	zstart=99
 	zoomin_out_fname="./IC_zoomin_pp.dat"
+	HYDRO=0
 	echo "Z_RUN in run_music_pp: $Z_RUN"
 	setup_output_files_from_z "$Z_RUN"
 	if [[ "$CREATE_Z_PARAMS" == "1" ]]; then
@@ -260,8 +264,11 @@ run_music_pp_at_z() {
         run_hpkvd_from_params_at_z "$Z_RUN"
 	fi
 	if [[ "$CREATE_ZOOMIN_ICS" == "1" ]]; then
-		echo "Syncpoint 1"
-        create_zoomin_ics "$Z_RUN" "$levelmax" "$zoomin_out_fname"
+        create_zoomin_ics "$Z_RUN" "$levelmax" "$zstart" "$zoomin_out_fname"
+	    HYDRO=1
+	fi
+	if [[ "$RUN_MUSIC_ZOOMIN" == "1" ]]; then
+        run_music_from_params_at_z "$Z_RUN"
 	fi
 }
 
