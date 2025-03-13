@@ -6,6 +6,7 @@ import argparse
 
 def create_TFs_from_parameter_file(run_dir,
                                    extrap_params,
+								   redshift=0,
                                    tables_dir_outside=True,
                                    params_file_name="parameters.ini", 
                                    debug_pptools=False,
@@ -16,6 +17,7 @@ def create_TFs_from_parameter_file(run_dir,
     Args:
         run_dir (str): directory of the run
         extrap_params (extrapParams): Extrapolation parameters
+		redshift (float): redshift of the output TF
         tables_dir_outside (bool): whether the tables dir for PeakPatch is inside of rundir or outside of it
         params_file_name (str): name of the parameters file
         bebug_pptools (bool): whether to printout debug info for peakpatchtools
@@ -33,6 +35,7 @@ def create_TFs_from_parameter_file(run_dir,
     # Variant 1: import cosmology from a run
     run = PeakPatch(params_file=params_file, run_dir=run_dir, debug=debug_pptools)
     TFCalc.init_cosmology_from_run(run, minkh=minkh, maxkh=maxkh)
+    TFCalc.redshift = redshift
 
     # Get the names of the tables from the parameter file
     class_file_pp = run.pkfile
@@ -82,6 +85,7 @@ if __name__ == "__main__":
                                                  "from the given parameter file")
     parser.add_argument("run_dir", default=".")
     parser.add_argument("params_file_name", default="parameters.ini")
+    parser.add_argument("redshift", default="0")
     args = parser.parse_args()
 
     log = True
@@ -99,6 +103,6 @@ if __name__ == "__main__":
     extrap_fraction = 2 # Last 2 points
 
     extrap_params = extrapParams(maxkh_extrap, extrap_fraction, extrapolation_scheme)
-    create_TFs_from_parameter_file(run_dir, extrap_params,
+    create_TFs_from_parameter_file(run_dir, extrap_params, redshift=args.redshift,
                                    params_file_name=params_file_name, 
                                    debug_pptools=debug_pptools, log=log)

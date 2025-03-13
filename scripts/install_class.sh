@@ -5,12 +5,12 @@ if [[ "$INTERFACE_DIR" == "" ]]; then
 	echo "Please, set INTERFACE_DIR environment variable"
 	exit 1
 fi
-gcc --verstion || { echo "Plese, load gcc module before proceeding" ; exit 1; }
+gcc --version || { echo "Plese, load gcc module before proceeding" ; exit 1; }
 
 # Python venv setup
 python -m venv env
 source ./env/bin/activate
-pip install setuptool cython numpy scipy matplotlib
+pip install setuptools cython numpy scipy matplotlib
 
 # Install CLASS: F90 interface
 git clone https://github.com/lesgourg/class_public.git
