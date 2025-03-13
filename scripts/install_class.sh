@@ -8,7 +8,7 @@ fi
 gcc --version || { echo "Plese, load gcc module before proceeding" ; exit 1; }
 
 # Python venv setup
-python -m venv env
+python -m venv env || { echo "Plese, load python module before proceeding" ; exit 1; }
 source ./env/bin/activate
 pip install setuptools cython numpy scipy matplotlib
 
