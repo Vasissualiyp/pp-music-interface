@@ -85,7 +85,7 @@ if __name__ == "__main__":
                                                  "from the given parameter file")
     parser.add_argument("run_dir", default=".")
     parser.add_argument("params_file_name", default="parameters.ini")
-    parser.add_argument("redshift", default="0")
+    parser.add_argument("redshift", default=0)
     args = parser.parse_args()
 
     log = True
@@ -103,6 +103,6 @@ if __name__ == "__main__":
     extrap_fraction = 2 # Last 2 points
 
     extrap_params = extrapParams(maxkh_extrap, extrap_fraction, extrapolation_scheme)
-    create_TFs_from_parameter_file(run_dir, extrap_params, redshift=args.redshift,
+    create_TFs_from_parameter_file(run_dir, extrap_params, redshift=float(args.redshift),
                                    params_file_name=params_file_name, 
                                    debug_pptools=debug_pptools, log=log)
