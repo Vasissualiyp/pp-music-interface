@@ -1,19 +1,20 @@
 #!/bin/bash 
-#SBATCH -p debug
+##SBATCH -p debug
+#SBATCH --account=rrg-rbond-ac
 #SBATCH --nodes=1
 #SBATCH --ntasks=2
 #SBATCH --ntasks-per-node=2
 #SBATCH --cpus-per-task=1
-#SBATCH --time=1:00:00
+#SBATCH --time=4:00:00
 #SBATCH --job-name=pp_mus_z0
 #SBATCH --output=output_pp_mus_z0
 
 # General flags to enable/disable certain script behaviors
-CREATE_Z_PARAMS=0
-CREATE_TF=0
-RUN_PP=0
-RUN_MUSIC=0
-COMPILE=0
+CREATE_Z_PARAMS=1
+CREATE_TF=1
+RUN_PP=1
+RUN_MUSIC=1
+COMPILE=1
 CREATE_ZOOMIN_ICS=1
 RUN_MUSIC_ZOOMIN=1
 
@@ -45,16 +46,18 @@ create_params_at_z() {
 }
 create_tfs_at_z() {
 	local Z_RUN="$1"
+	local tf_red="$2"
     module load python
     local params=$(get_params_from_z $Z_RUN)
-	create_TF_tables $params
+	create_TF_tables $params $tf_red
 }
 
 create_TF_tables() {
     local params_basename=$(basename $1)
+	tf_red=$2
     module load $create_TF_modules
     source $INTERFACE_DIR/env/bin/activate
-    python $INTERFACE_DIR/scripts/create_TFs_from_parameter_file.py $RUNDIR $params_basename
+    python $INTERFACE_DIR/scripts/create_TFs_from_parameter_file.py $RUNDIR $params_basename $tf_red
 }
 
 setup_output_files_from_z() {
@@ -165,7 +168,7 @@ replace_parameter() {
   #sed -i -rz "s|^$param_name=.*$|$param_name=$param_new_value|mg; T; s|^#$param_name=.*$|$param_name=$param_new_value|m" $params_file
 }
 
-create_zoomin_ics() {
+create_zoomin_ics_params() {
   red="$1"
   levelmax="$2"
   zstart="$3"
@@ -242,7 +245,7 @@ run_hpkvd_from_params_file() {
 
 run_music_pp_at_z() {
     Z_RUN="$1"
-	levelmax=11
+	levelmax=12
 	zstart=99
 	zoomin_out_fname="./IC_zoomin_pp.dat"
 	HYDRO=0
@@ -252,7 +255,7 @@ run_music_pp_at_z() {
         create_params_at_z "$Z_RUN"
 	fi
 	if [[ "$CREATE_TF" == "1" ]]; then
-        create_tfs_at_z "$Z_RUN"
+        create_tfs_at_z "$Z_RUN" "0"
 	fi
 	if [[ "$COMPILE" == "1" ]]; then
 	  compile_pp_music_from_params_at_z "$Z_RUN"
@@ -264,11 +267,12 @@ run_music_pp_at_z() {
         run_hpkvd_from_params_at_z "$Z_RUN"
 	fi
 	if [[ "$CREATE_ZOOMIN_ICS" == "1" ]]; then
-        create_zoomin_ics "$Z_RUN" "$levelmax" "$zstart" "$zoomin_out_fname"
+        create_zoomin_ics_params "$Z_RUN" "$levelmax" "$zstart" "$zoomin_out_fname"
 	    HYDRO=1
-	fi
-	if [[ "$RUN_MUSIC_ZOOMIN" == "1" ]]; then
-        run_music_from_params_at_z "$Z_RUN"
+	    if [[ "$RUN_MUSIC_ZOOMIN" == "1" ]]; then
+            create_tfs_at_z "$Z_RUN" "$zstart"
+            run_music_from_params_at_z "$Z_RUN"
+	    fi
 	fi
 }
 
@@ -276,4 +280,4 @@ run_music_pp_at_z() {
 #run_music_pp_at_z 5
 #run_music_pp_at_z 11
 #run_music_pp_at_z 13
-run_music_pp_at_z 8
+run_music_pp_at_z 15
