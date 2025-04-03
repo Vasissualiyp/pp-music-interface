@@ -749,7 +749,7 @@ OBJS    = $(music_dir)/output.o \
 # PeakPatch-sourced modules
 HPKVD_mod = $(music_plugs)/hpkvd_fortran_module.o
 MPKVD_mod = $(music_plugs)/merge_pkvd_fortran_module.o
-LPP = -L$(hpdir_full) -lhpkvd -lmerge_pkvd_module -Wl,-rpath,$(hpdir_full) \
+LPP = -L$(hpdir_full) -Wl,-rpath,$(hpdir_full) \
 	  -L$(mgdir_full) -Wl,-rpath,$(mgdir_full) \
 	  $(FFTLIB)
 
@@ -780,11 +780,11 @@ blabla:
 	echo $(OBJS)
 
 ifeq ($(strip $(HAVEBOXLIB)), yes)
-$(TARGET): $(OBJS) $(HPKVD_mod) $(music_plugs)/nyx_plugin/*.cpp $(LIB_h)
+$(TARGET): $(OBJS) $(music_plugs)/nyx_plugin/*.cpp
 	cd $(music_plugs)/nyx_plugin; make BOXLIB_HOME=$(BOXLIB_HOME) FFTW3=$(FFTW3) SINGLE=$(SINGLEPRECISION)
 	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(BLOBJS) -lifcore
 else
-$(TARGET): $(OBJS) $(HPKVD_mod) $(LIB_h) 
+$(TARGET): $(OBJS)
 	$(CC) $(CCOPTIONS) $(LPATHS) $(LPP) \
 		-o $(bindir)/$(TARGET) $^ $(LFLAGS) $(LDFLAGS)
 endif
