@@ -55,6 +55,7 @@ MODFLAG = -module
 OMPLIB = -fopenmp
 
 FFTW_PATH = $(SCINET_FFTW_MPI_ROOT)
+FFTW_DOUBLE_PATH = $(SCINET_FFTW_MPI_ROOT)
 
 CC = mpicc
 CXX = mpicxx
@@ -81,7 +82,8 @@ FFTWOMP = -lfftw3f_omp
 MODFLAG = -J
 OMPLIB = -fopenmp  # Enable OpenMP
 
-FFTW_PATHFFTW_PATH = $(SCINET_FFTW_MPI_ROOT)
+FFTW_PATH = $(SCINET_FFTW_MPI_ROOT)
+FFTW_DOUBLE_PATH = $(SCINET_FFTW_MPI_ROOT)
 
 CC =  mpicc
 CXX = mpiCC
@@ -148,6 +150,7 @@ MODFLAG = -J
 OMPLIB = -fopenmp
 
 FFTW_PATH = /cita/modules/fftw/3.3.10-openmpi-ucx
+FFTW_DOUBLE_PATH = /cita/modules/fftw/3.3.10-openmpi-ucx
 
 CC =  mpicc
 CXX = mpiCC
@@ -183,6 +186,7 @@ MODFLAG = -J
 OMPLIB = -fopenmp
 
 FFTW_PATH = /cita/modules/fftw/3.3.10-openmpi
+FFTW_DOUBLE_PATH = /cita/modules/fftw/3.3.10-openmpi
 
 CC =  mpicc
 CXX = mpiCC
@@ -707,7 +711,7 @@ ifeq ($(strip $(SINGLEPRECISION)), yes)
   endif
 else
   ifeq ($(strip $(FFTW3)),yes)
-    LFLAGS += -lfftw3
+    LFLAGS += -lfftw3 -lfftw3_mpi-L$(FFTW_DOUBLE_PATH)
   else
     LFLAGS  += -ldrfftw -ldfftw
   endif
