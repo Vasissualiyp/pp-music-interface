@@ -109,6 +109,7 @@ OPTIMIZE = -O3 -mcmodel=large -fno-common #-Wno-deprecated -Wextra
 FFTWFLAGS = -lstdc++ -lfftw3f_mpi -lfftw3f 
 FFTWOMP = -lfftw3f_omp 
 FFTW_PATH = $(FFTW_SINGLE_PATH)
+#FFTW_DOUBLE_PATH = $(FFTW_DOUBLE_PATH_LIB)
 MODFLAG = -J
 OMPLIB = -fopenmp
 
@@ -660,6 +661,7 @@ CPATHS = -I$(music_dir)/src
 
 ifdef NIX_BUILD # Compilation on nix
     LFLAGS += -fopenmp -lfftw3_threads -lfftw3
+    LPATHS += -L$(FFTW_DOUBLE_PATH)
 else # Compilation on any other machine
     CPATHS += -I$(HOME)/local/include -I/opt/local/include -I/usr/local/include
     LPATHS  = -L$(HOME)/local/lib -L/opt/local/lib -L/usr/local/lib -L$(FFTW_DOUBLE_PATH)
@@ -711,7 +713,7 @@ ifeq ($(strip $(SINGLEPRECISION)), yes)
   endif
 else
   ifeq ($(strip $(FFTW3)),yes)
-    LFLAGS += -lfftw3 -lfftw3_mpi-L$(FFTW_DOUBLE_PATH)
+    LFLAGS += -lfftw3 -lfftw3_mpi -L$(FFTW_DOUBLE_PATH)
   else
     LFLAGS  += -ldrfftw -ldfftw
   endif
