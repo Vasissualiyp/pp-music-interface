@@ -105,7 +105,7 @@ ifeq ($(SYSTYPE),"nix")
 COMPILER_FLAGS = -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
 F90 = mpifort
 F77 = mpifort
-OPTIMIZE = -O3 -mcmodel=large -fno-common #-Wno-deprecated -Wextra
+OPTIMIZE = -O0 -mcmodel=large -fno-common #-Wno-deprecated -Wextra
 FFTWFLAGS = -lstdc++ -lfftw3f_mpi -lfftw3f 
 FFTWOMP = -lfftw3f_omp 
 FFTW_PATH = $(FFTW_SINGLE_PATH)
@@ -119,7 +119,7 @@ CCOPTIMIZE = -DOMPI_SKIP_MPICXX
 LDFLAGS = -L$(MPI_PATH) -lmpi -ldl -lm \
 		  -L$(GFORT_LPATH) -lgfortran
 
-DEBUG = #-Wall -g # Enable debugging
+DEBUG = -Wall -g # Enable debugging
 OPTIMIZE += $(DEBUG) 
 CCOPTIMIZE += $(DEBUG) 
 
@@ -647,7 +647,7 @@ music_dir= $(MUSIC_DIR)
 ### compiler and path settings
 
 # Debugging flags - GDB
-DEBUGFLAGS = -Wall -g -O3
+DEBUGFLAGS = -Wall -g -O0
 # Debugging flags - general
 #DEBUGFLAGS = -Wall -g
 
