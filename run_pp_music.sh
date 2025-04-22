@@ -1,22 +1,21 @@
 #!/bin/bash 
-##SBATCH -p debug
+#SBATCH -p debug
 #SBATCH --account=rrg-rbond-ac
-#SBATCH --nodes=1
-#SBATCH --ntasks=2
-#SBATCH --ntasks-per-node=2
+#SBATCH --nodes=2
+##SBATCH --ntasks=16
+#SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=4:00:00
-#SBATCH --job-name=pp_mus_z0
-#SBATCH --output=output_pp_mus_z0
-
+#SBATCH --time=1:00:00
+#SBATCH --job-name=pp_mus_z17
+#SBATCH --output=output_pp_mus_z17
 # General flags to enable/disable certain script behaviors
 CREATE_Z_PARAMS=1
-CREATE_TF=1
-RUN_PP=1
+CREATE_TF=0
+RUN_PP=0
 RUN_MUSIC=1
 COMPILE=1
-CREATE_ZOOMIN_ICS=1
-RUN_MUSIC_ZOOMIN=1
+CREATE_ZOOMIN_ICS=0
+RUN_MUSIC_ZOOMIN=0
 
 PP_DIR="/scratch/m/murray/vasissua/PeakPatch/peakpatch"
 RUNDIR=$INTERFACE_DIR
@@ -28,11 +27,13 @@ run_modules="NiaEnv/2019b intel/2019u4 intelmpi/2019u4 fftw/3.3.8 gsl/2.5 \
 
 # Go to SLURM submit directory
 #cd $SLURM_SUBMIT_DIR
+NUM_TASKS="$SLURM_JOB_NUM_NODES"
 
 # Need to symlink the src directory to get some of the tables from the correct location
 ln -s $PP_DIR/src $RUNDIR/
 mkdir bin output logfiles fields
 source $PP_DIR/scripts/vasiliis_scripts/movestuff.sh
+
 
 ######################################
 ########### CREATE DATASETS ##########
@@ -211,7 +212,7 @@ run_music_from_params_at_z() {
   stdout=$(get_stdout_from_params $params)
   stderr=$(get_stderr_from_params $params)
   module load $run_modules
-  mpirun -np 1 ./bin/MUSIC "$params" 2>> $stderr 1>> $stdout
+  mpirun -np $NUM_TASKS ./bin/MUSIC "$params" 2>> $stderr 1>> $stdout
 }
 
 run_hpkvd_from_params_file() {
@@ -280,4 +281,4 @@ run_music_pp_at_z() {
 #run_music_pp_at_z 5
 #run_music_pp_at_z 11
 #run_music_pp_at_z 13
-run_music_pp_at_z 15
+run_music_pp_at_z 17
