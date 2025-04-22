@@ -75,7 +75,7 @@ ifeq ($(SYSTYPE),"niag-gcc")
 
 F90 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
 F77 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
-OPTIMIZE = -O3 -Wall -mcmodel=large -fno-common -Wno-deprecated 
+OPTIMIZE = -O3 -mcmodel=large -fno-common
 #OPTIMIZE += -Wall -g # Enable debugging
 FFTWFLAGS = -lstdc++ -lfftw3f_mpi -lfftw3f 
 FFTWOMP = -lfftw3f_omp 

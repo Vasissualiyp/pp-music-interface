@@ -256,6 +256,7 @@
             # These are needed for tmpi
             reptyr
             #mpich
+			tmpi
 
             # These are needed for MUSIC
             gfortran.cc
