@@ -3,8 +3,10 @@ env/
 src/
 fields/
 tables/
+param/
 MUSIC
 wnoise.*
+core.*
 *.swp
 Makefile.systype
 *.dat

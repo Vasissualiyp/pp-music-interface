@@ -1,13 +1,12 @@
 #!/bin/bash 
-#SBATCH -p debug
+##SBATCH -p debug
 #SBATCH --account=rrg-rbond-ac
-#SBATCH --nodes=2
-##SBATCH --ntasks=16
+#SBATCH --nodes=10
 #SBATCH --ntasks-per-node=1
 #SBATCH --cpus-per-task=1
-#SBATCH --time=1:00:00
+#SBATCH --time=12:00:00
 #SBATCH --job-name=pp_mus_z17
-#SBATCH --output=output_pp_mus_z17
+#SBATCH --output=output_pp_mus_z17_lvl11
 # General flags to enable/disable certain script behaviors
 CREATE_Z_PARAMS=1
 CREATE_TF=0
@@ -22,12 +21,22 @@ RUNDIR=$INTERFACE_DIR
 INIT_PARAMS_PATH="./param/parameters.ini"
 
 create_TF_modules="gcc python"
-run_modules="NiaEnv/2019b intel/2019u4 intelmpi/2019u4 fftw/3.3.8 gsl/2.5 \
+
+# MUSIC Intel modules
+#run_modules="NiaEnv/2019b intel/2019u4 intelmpi/2019u4 fftw/3.3.8 gsl/2.5 \
+#    cfitsio/4.4.0 python/3.6.8 mkl/2019u4 hdf5/1.8.21"
+
+# MUSIC gcc modules
+run_modules="gcc openmpi fftw/3.3.8 gsl/2.5 \
     cfitsio/4.4.0 python/3.6.8 mkl/2019u4 hdf5/1.8.21"
 
 # Go to SLURM submit directory
 #cd $SLURM_SUBMIT_DIR
 NUM_TASKS="$SLURM_JOB_NUM_NODES"
+# Set OpenMP threading
+#export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
+export OMP_NUM_THREADS=1
+#NUM_TASKS=2
 
 # Need to symlink the src directory to get some of the tables from the correct location
 ln -s $PP_DIR/src $RUNDIR/
@@ -228,9 +237,6 @@ run_hpkvd_from_params_file() {
     
     # Remove existing merged catalogues from output
 	remove_old_catalogue "$lname" "$seed"
-    
-    # Set OpenMP threading
-    export OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK
     
     mpirun ./bin/filter_gen "$params" 2>> $stderr 1>> $stdout
     

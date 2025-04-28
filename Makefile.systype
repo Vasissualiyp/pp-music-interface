@@ -7,8 +7,8 @@
 #############
 
 #SYSTYPE="niagara"
-#SYSTYPE="niagara-gcc"
-SYSTYPE="nix"
+SYSTYPE="niag-gcc"
+#SYSTYPE="nix"
 #SYSTYPE="cita"
 #SYSTYPE="starq"
 #SYSTYPE="darwin"

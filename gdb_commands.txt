@@ -1,7 +1,2 @@
 dir /home/vasilii/research/software_src/music/src
-break densities.cc:284
-break densities.cc:297
-r param/debug.ini
-x/16xg 0x7ffff4099040-32
-c
-x/16xg 0x7ffff4099040-32
+r param/parameters_z17.ini

@@ -75,7 +75,7 @@ ifeq ($(SYSTYPE),"niag-gcc")
 
 F90 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
 F77 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
-OPTIMIZE = -O3 -mcmodel=large -fno-common
+OPTIMIZE = -O4 -mcmodel=large -fno-common
 #OPTIMIZE += -Wall -g # Enable debugging
 FFTWFLAGS = -lstdc++ -lfftw3f_mpi -lfftw3f 
 FFTWOMP = -lfftw3f_omp 
@@ -639,6 +639,7 @@ FFTW3		= yes
 MULTITHREADFFTW	= no
 MPIFFTW	= yes
 SINGLEPRECISION	= no
+#WITH_MPI        = yes
 HAVEHDF5        = yes
 HAVEBOXLIB	= no
 BOXLIB_HOME     = ${HOME}/nyx_tot_sterben/BoxLib
