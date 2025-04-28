@@ -105,7 +105,7 @@ ifeq ($(SYSTYPE),"nix")
 COMPILER_FLAGS = -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
 F90 = mpifort
 F77 = mpifort
-OPTIMIZE = -O0 -mcmodel=large -fno-common #-Wno-deprecated -Wextra
+OPTIMIZE = -O0 -mcmodel=large -fno-common -fsanitize=address #-Wno-deprecated -Wextra
 FFTWFLAGS = -lstdc++ -lfftw3f_mpi -lfftw3f 
 FFTWOMP = -lfftw3f_omp 
 FFTW_PATH = $(FFTW_SINGLE_PATH)
@@ -636,7 +636,8 @@ pp_all: $(EXEC_h) $(EXEC_f) $(EXEC_m)
 ##############################################################################
 ### compile time configuration options
 FFTW3		= yes
-MULTITHREADFFTW	= yes
+MULTITHREADFFTW	= no
+MPIFFTW	= yes
 SINGLEPRECISION	= no
 HAVEHDF5        = yes
 HAVEBOXLIB	= no
