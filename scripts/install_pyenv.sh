@@ -8,9 +8,10 @@ fi
 gcc --version || { echo "Plese, load gcc module before proceeding" ; exit 1; }
 
 # Python venv setup
+cd "$INTERFACE_DIR"
 python -m venv env || { echo "Plese, load python module before proceeding" ; exit 1; }
 source ./env/bin/activate
-pip install setuptools cython numpy scipy matplotlib
+pip install setuptools cython numpy scipy matplotlib pandas camb
 
 # Install CLASS: F90 interface
 git clone https://github.com/lesgourg/class_public.git

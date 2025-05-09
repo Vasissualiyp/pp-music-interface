@@ -75,7 +75,7 @@ ifeq ($(SYSTYPE),"niag-gcc")
 
 F90 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
 F77 = mpifort -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
-OPTIMIZE = -O4 -mcmodel=large -fno-common
+OPTIMIZE = -O3 -Wall -mcmodel=large -fno-common -Wno-deprecated 
 #OPTIMIZE += -Wall -g # Enable debugging
 FFTWFLAGS = -lstdc++ -lfftw3f_mpi -lfftw3f 
 FFTWOMP = -lfftw3f_omp 
@@ -105,7 +105,7 @@ ifeq ($(SYSTYPE),"nix")
 COMPILER_FLAGS = -DOMPI_SKIP_MPICXX -fallow-argument-mismatch
 F90 = mpifort
 F77 = mpifort
-OPTIMIZE = -O0 -mcmodel=large -fno-common -fsanitize=address #-Wno-deprecated -Wextra
+OPTIMIZE = -O0 -mcmodel=large -fno-common #-Wno-deprecated -Wextra
 FFTWFLAGS = -lstdc++ -lfftw3f_mpi -lfftw3f 
 FFTWOMP = -lfftw3f_omp 
 FFTW_PATH = $(FFTW_SINGLE_PATH)
@@ -636,10 +636,8 @@ pp_all: $(EXEC_h) $(EXEC_f) $(EXEC_m)
 ##############################################################################
 ### compile time configuration options
 FFTW3		= yes
-MULTITHREADFFTW	= no
-MPIFFTW	= yes
+MULTITHREADFFTW	= yes
 SINGLEPRECISION	= no
-#WITH_MPI        = yes
 HAVEHDF5        = yes
 HAVEBOXLIB	= no
 BOXLIB_HOME     = ${HOME}/nyx_tot_sterben/BoxLib
