@@ -16,9 +16,14 @@ COMPILE=1
 CREATE_ZOOMIN_ICS=0
 RUN_MUSIC_ZOOMIN=0
 
-PP_DIR="/scratch/m/murray/vasissua/PeakPatch/peakpatch"
+# Honour an exported PP_DIR/INTERFACE_DIR; otherwise derive them from this
+# script's location so the interface Makefile (ppsrcdir=$(PP_DIR)/src) and
+# RUNDIR still work without the SciNet scratch hardcode.
+INTERFACE_DIR="${INTERFACE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
+PP_DIR="${PP_DIR:-$(dirname "$INTERFACE_DIR")/peakpatch}"
+export INTERFACE_DIR PP_DIR
 RUNDIR=$INTERFACE_DIR
-INIT_PARAMS_PATH="./param/parameters.ini"
+INIT_PARAMS_PATH="./param/legacy/parameters.ini"
 
 create_TF_modules="gcc python"
 
@@ -157,7 +162,7 @@ compile_pp_music_from_params() {
 remove_old_catalogue() {
     local lname="$1"
     local seed="$2"
-    local old_catalogue="output/${lname}_nt2_merge.pksc.$seed"
+    local old_catalogue="output/${lname}_merge.pksc.$seed"
     if [ -f "$old_catalogue" ]; then
         rm -f $old_catalogue
     fi

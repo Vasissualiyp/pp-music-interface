@@ -1,2 +1,2 @@
-dir /home/vasilii/research/software_src/music/src
+dir /home/vasilii/research/software_src/music_mpi/src
 r param/parameters_z17.ini

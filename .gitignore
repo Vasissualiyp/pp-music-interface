@@ -1,9 +1,8 @@
 bin/
+build/
 env/
-src/
 fields/
 tables/
-param/
 MUSIC
 wnoise.*
 core.*

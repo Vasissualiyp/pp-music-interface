@@ -38,6 +38,13 @@ export LD_LIBRARY_PATH := $(CURRENT_DIR)/hpkvd:$(LD_LIBRARY_PATH)
 #RUNDIR := $(shell dirname $(shell pwd))
 RUNDIR := $(shell pwd)
 
+# PeakPatch and MUSIC live beside this interface by default. An exported
+# PP_DIR/MUSIC_DIR (the Nix dev shell sets both) or a value on the make command
+# line takes precedence; these are only fallbacks. The PeakPatch half below
+# needs PP_DIR to find src/, and the delegated MUSIC build needs MUSIC_DIR.
+PP_DIR ?= $(abspath $(CURDIR)/../peakpatch)
+MUSIC_DIR ?= $(abspath $(CURDIR)/../music_mpi)
+
 #--------------------------------------------------------------------------
 # OPTIONS FOR RUNNING ON SCINET-NIAGARA WITH INTEL COMPILERS (RECOMMENDED)
 #--------------------------------------------------------------------------
@@ -632,198 +639,37 @@ pp_all: $(EXEC_h) $(EXEC_f) $(EXEC_m)
 #│ /_/  /_/\____//____/___/\____/    │
 #│                                   │
 #└───────────────────────────────────┘
-# MUSIC Makefile Begin
-##############################################################################
-### compile time configuration options
-FFTW3		= yes
-MULTITHREADFFTW	= yes
-SINGLEPRECISION	= no
-HAVEHDF5        = yes
-HAVEBOXLIB	= no
-BOXLIB_HOME     = ${HOME}/nyx_tot_sterben/BoxLib
-music_dir= $(MUSIC_DIR)
-
-##############################################################################
-### compiler and path settings
-
-# Debugging flags - GDB
-DEBUGFLAGS = -Wall -g -O0
-# Debugging flags - general
-#DEBUGFLAGS = -Wall -g
-
-CC      = $(CXX) $(COMPILER_FLAGS)
-OPT     = $(DEBUGFLAGS) -Wno-unknown-pragmas -mtune=native 
-
-FFLAGS  = -fPIC $(COMPILER_FLAGS)
-CFLAGS  =  
-LFLAGS += $(LPATHS) -lgsl -lgslcblas -lgfortran -lmpi -lm -ldl -lhdf5 -lstdc++
-CPATHS = -I$(music_dir)/src 
-
-ifdef NIX_BUILD # Compilation on nix
-    LFLAGS += -fopenmp -lfftw3_threads -lfftw3
-    LPATHS += -L$(FFTW_DOUBLE_PATH)
-else # Compilation on any other machine
-    CPATHS += -I$(HOME)/local/include -I/opt/local/include -I/usr/local/include
-    LPATHS  = -L$(HOME)/local/lib -L/opt/local/lib -L/usr/local/lib -L$(FFTW_DOUBLE_PATH)
-endif
-
-FFLAGS += $(DEBUGFLAGS) -fbacktrace
-CPATHS += -I$(moddir)
-LPATHS += -L$(moddir)
-##############################################################################
-# if you have FFTW 2.1.5 or 3.x with multi-thread support, you can enable the 
-# option MULTITHREADFFTW
-ifeq ($(strip $(MULTITHREADFFTW)), yes)
-  ifeq ($(CC), mpiicpc)
-    CFLAGS += -openmp
-    LFLAGS += -openmp
-  else
-    CFLAGS += -fopenmp
-    LFLAGS += -fopenmp
-  endif
-  ifeq ($(strip $(FFTW3)),yes)
-	ifeq ($(strip $(SINGLEPRECISION)), yes)
-		LFLAGS  +=  -lfftw3f_threads
-	else
-		LFLAGS  +=  -lfftw3_threads
-	endif
-  else
-    ifeq ($(strip $(SINGLEPRECISION)), yes)
-      LFLAGS  += -lsrfftw_threads -lsfftw_threads
-    else
-      LFLAGS  += -ldrfftw_threads -ldfftw_threads
-    endif
-  endif
-else
-  CFLAGS  += -DSINGLETHREAD_FFTW
-endif
-
-ifeq ($(strip $(FFTW3)),yes)
-  CFLAGS += -DFFTW3
-endif
-
-##############################################################################
-# this section makes sure that the correct FFTW libraries are linked
-ifeq ($(strip $(SINGLEPRECISION)), yes)
-  CFLAGS  += -DSINGLE_PRECISION
-  ifeq ($(FFTW3),yes)
-    LFLAGS += -lfftw3f
-  else
-    LFLAGS  += -lsrfftw -lsfftw
-  endif
-else
-  ifeq ($(strip $(FFTW3)),yes)
-    LFLAGS += -lfftw3 -lfftw3_mpi -L$(FFTW_DOUBLE_PATH)
-  else
-    LFLAGS  += -ldrfftw -ldfftw
-  endif
-endif
-
-##############################################################################
-#if you have HDF5 installed, you can also enable the following options
-ifeq ($(strip $(HAVEHDF5)), yes)
-  OPT += -DH5_USE_16_API -DHAVE_HDF5
-  LFLAGS += -lhdf5
-endif
-
-##############################################################################
-CFLAGS += $(OPT)
-music_src = $(music_dir)/src
-music_plugs = $(music_src)/plugins
-TARGET  = MUSIC
-OBJS    = $(music_dir)/output.o \
-          $(music_dir)/transfer_function.o \
-          $(music_dir)/Numerics.o \
-          $(music_dir)/defaults.o \
-          $(music_dir)/constraints.o \
-          $(music_dir)/random.o\
-		  $(music_dir)/convolution_kernel.o \
-          $(music_dir)/region_generator.o \
-          $(music_dir)/densities.o \
-          $(music_dir)/cosmology.o \
-          $(music_dir)/poisson.o\
-		  $(music_dir)/densities.o \
-          $(music_dir)/cosmology.o \
-          $(music_dir)/poisson.o \
-          $(music_dir)/log.o \
-          $(music_dir)/main.o \
-		  $(patsubst $(music_plugs)/%.cc,$(music_plugs)/%.o,$(wildcard $(music_plugs)/*.cc))
-# PeakPatch-sourced modules
-HPKVD_mod = $(music_plugs)/hpkvd_fortran_module.o
-MPKVD_mod = $(music_plugs)/merge_pkvd_fortran_module.o
-LPP = -L$(hpdir_full) -Wl,-rpath,$(hpdir_full) \
-	  -L$(mgdir_full) -Wl,-rpath,$(mgdir_full) \
-	  $(FFTLIB)
-
-
-##############################################################################
-# stuff for BoxLib
-BLOBJS = ""
-ifeq ($(strip $(HAVEBOXLIB)), yes)
-  IN_MUSIC = YES
-  TOP = ${PWD}/$(music_plugs)/nyx_plugin
-  CCbla := $(CC)
-  include $(music_plugs)/nyx_plugin/Make.ic
-  CC  := $(CCbla)
-  CPATHS += $(INCLUDE_LOCATIONS)
-  LPATHS += -L$(objEXETempDir)
-  BLOBJS = $(foreach obj,$(objForExecs),$(music_plugs)/boxlib_stuff/$(obj))
+# MUSIC Makefile Begin (delegated to music_mpi)
 #
-endif
+# The interface does NOT compile MUSIC's sources itself. music_mpi is the
+# authority on its own build: WITH_MPI, FFTW-MPI, GSL and the object list. The
+# hand-copied object list that used to live here predated the whole mpi_*.cc
+# family and never defined WITH_MPI, so it silently stopped building against
+# the current music_mpi. We now invoke music_mpi's own Makefile in its own
+# source directory and copy the resulting binary into bin/.
+#
+# MUSIC_DIR must point at the music_mpi checkout. It is exported by the Nix dev
+# shell; otherwise pass it on the command line, e.g.
+#     make MUSIC MUSIC_DIR=/path/to/music_mpi
+# Additional variable overrides for clusters whose toolchain is not in the Nix
+# shell can be passed through MUSIC_MAKE_VARS, e.g.
+#     make MUSIC MUSIC_MAKE_VARS='CC=mpiCC GSL_PATH=/opt/gsl'
 
-##############################################################################
-all: $(OBJS) $(TARGET) Makefile
-#	cd plugins/boxlib_stuff; make
+MUSIC_DIR ?= $(abspath $(CURDIR)/../music_mpi)
+MUSIC_MAKE_VARS ?=
 
-bla:
-	echo $(BLOBJS)
+.PHONY: MUSIC music clean_music
 
-blabla:
-	echo $(OBJS)
-
-ifeq ($(strip $(HAVEBOXLIB)), yes)
-$(TARGET): $(OBJS) $(music_plugs)/nyx_plugin/*.cpp
-	cd $(music_plugs)/nyx_plugin; make BOXLIB_HOME=$(BOXLIB_HOME) FFTW3=$(FFTW3) SINGLE=$(SINGLEPRECISION)
-	$(CC) $(LPATHS) -o $@ $^ $(LFLAGS) $(BLOBJS) -lifcore
-else
-$(TARGET): $(OBJS)
-	$(CC) $(CCOPTIONS) $(LPATHS) $(LPP) \
-		-o $(bindir)/$(TARGET) $^ $(LFLAGS) $(LDFLAGS)
-endif
-
-$(music_dir)/%.o: $(music_src)/%.cc $(music_src)/*.hh Makefile 
-	$(CC) $(CFLAGS) $(CPATHS) -c $< -o $@
-
-$(music_plugs)/%.o: $(music_plugs)/%.cc $(music_src)/*.hh Makefile 
-	$(CC) $(CFLAGS) $(CPATHS) -c $< -o $@
-
-# For peakpatch:
-$(HPKVD_mod): \
-        $(hpdir)/hpkvd_c_wrapper.f90 \
-        $(exdir)/textlib_ex.o \
-        $(hpdir)/hpkvdmodule.o \
-        $(exdir)/mpivars_ex.o
-#$(HPKVD_mod): $(music_plugs)/peakpatch_fortran_module.f90
-	$(F90) $(OPTIONS) -c $< -o $@
-$(MPKVD_mod): \
-        $(mgdir)/merge_pkvd_c_wrapper.f90 \
-        $(exdir)/textlib_ex.o \
-        $(mgdir)/merge_pkvd_module.o \
-        $(exdir)/mpivars_ex.o
-#$(HPKVD_mod): $(music_plugs)/peakpatch_fortran_module.f90
-	$(F90) $(OPTIONS) -c $< -o $@
+MUSIC music:
+	$(MAKE) -C $(MUSIC_DIR) $(MUSIC_MAKE_VARS)
+	@mkdir -p $(bindir)
+	@cp -f $(MUSIC_DIR)/MUSIC $(bindir)/MUSIC
+	@echo "MUSIC built by delegation to $(MUSIC_DIR) -> $(bindir)/MUSIC"
 
 clean_music:
-	@rm -rf $(OBJS)
-	@rm -f $(bindir)/$(TARGET)
-	@rm -f $(HPKVD_mod)
-	echo "MUSIC cleanup successful!"
-ifeq ($(strip $(HAVEBOXLIB)), yes)
-	oldpath=`pwd`
-	cd $(music_plugs)/nyx_plugin; make realclean BOXLIB_HOME=$(BOXLIB_HOME)
-endif
-	cd $(oldpath)
-	
+	-$(MAKE) -C $(MUSIC_DIR) clean
+	@rm -f $(bindir)/MUSIC
+	@echo "MUSIC cleanup successful (delegated to $(MUSIC_DIR))!"
 #┌──────────────────────────────────────────────────────────────────┐
 #│    ____            __              __             __             │
 #│   / __ \__________/ /_  ___  _____/ /__________ _/ /_____  _____ │
@@ -837,3 +683,13 @@ endif
 clean:
 	make clean_pp
 	make clean_music
+
+help:
+	@echo "PeakPatch-MUSIC interface"
+	@echo "  make MUSIC        Build bin/MUSIC by delegation to music_mpi's own Makefile (uses MUSIC_DIR)"
+	@echo "  make hpkvd        Build PeakPatch hpkvd (uses CONFIG_FILE)"
+	@echo "  make filter_gen   Build PeakPatch filter_gen (uses CONFIG_FILE)"
+	@echo "  make merge_pkvd   Build PeakPatch merge_pkvd (uses CONFIG_FILE)"
+	@echo "  make clean        Clean PeakPatch and MUSIC build products"
+	@echo ""
+	@echo "MUSIC is not compiled from this Makefile; it is built by delegation, see the block above."

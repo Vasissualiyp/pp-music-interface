@@ -250,6 +250,10 @@
             blas
             lapack
 
+            # ppmi orchestrator build
+            cmake
+            ninja
+
             # Debuggers - can remove this if you want
             gdb
             valgrind
@@ -264,8 +268,8 @@
           shellHook = ''
             # PeakPatch system variables, used by peakpatchtools.py
             export PP_DIR=$(dirname $(pwd))/peakpatch
-            export MUSIC_DIR=$(dirname $(pwd))/music
-            export PYTHONPATH=$PP_DIR/python:$out/lib/python3.12/site-packages:$PYTHONPATH
+            export MUSIC_DIR=$(dirname $(pwd))/music_mpi
+            export PYTHONPATH=$PP_DIR/python:$PP_DIR/python/legacy/music_config:$out/lib/python3.12/site-packages:$PYTHONPATH
             export PATH=$PATH:$PP_DIR/bin:$PP_DIR/python
             # Make Python scripts executable
             chmod +x $PP_DIR/python/peak-patch*.py
@@ -282,6 +286,16 @@
             export GFORTCC_PATH=${pkgs.gfortran.cc}
             export GFORT_LPATH=${fortran_compiler.cc.lib}/lib
             export GCC_PATH=${pkgs.gcc}
+
+            # music_mpi's Makefile reads these under NIX_BUILD. Without them
+            # CPATHS contains empty `-I` arguments, which swallow the next
+            # compiler flag (including -c) and turn a compile into a broken
+            # link. They mirror music_mpi/flake.nix.
+            export GSL_PATH=${pkgs.gsl}
+            export GSL_INCLUDE_PATH=${pkgs.gsl.dev}/include
+            export GSL_LIBRARY_PATH=${pkgs.gsl}/lib
+            export HDF5_INCLUDE_PATH=${pkgs.hdf5.dev}/include
+            export HDF5_LIBRARY_PATH=${pkgs.hdf5}/lib
 
             export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [ 
                                                                 pkgs.mpi
