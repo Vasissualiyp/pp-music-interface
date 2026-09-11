@@ -247,6 +247,9 @@ TEST("generate: the zoom config raises levelmax and turns on baryons") {
   CHECK(sec["setup"]["levelmax"] == "11");
   CHECK(sec["setup"].count("ref_center") == 1);
   CHECK(sec["setup"].count("ref_extent") == 1);
+  // The zoom output frame must equal the catalogue's Lagrangian frame: MUSIC's
+  // coarse-grid alignment shift is disabled (see src/config.cpp).
+  CHECK(sec["setup"]["no_shift"] == "yes");
 }
 
 TEST("generate: the two stages emit an identical random block") {

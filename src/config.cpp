@@ -96,6 +96,14 @@ std::string music_conf(const RunSpec& spec, Stage stage, const RefRegion* ref) {
     out.set("setup", "ref_extent", format_triple(ref->extent));
   }
   out.set("setup", "align_top", "no");
+  // Keep the zoom output frame identical to the catalogue's Lagrangian frame.
+  // With levelmin < levelmax MUSIC otherwise shifts the whole domain so the
+  // refined region is centred on the coarse grid (mesh.hh:1719-1741, logged as
+  // "Domain shifted by ..."). It is only a periodic relabelling, but it moves
+  // every zoom particle away from the catalogue xlag it was built for, by up to
+  // half a coarse cell per axis, so cross-frame lookups (P5-T3, P5-T4) break.
+  // no_shift disables it; the refined grid is still placed correctly.
+  out.set("setup", "no_shift", "yes");
   out.set("setup", "baryons", stage == Stage::kSurvey ? "no" : "yes");
   out.set("setup", "use_2LPT", stage == Stage::kSurvey ? "no" : "yes");
   out.set("setup", "use_LLA", "yes");
