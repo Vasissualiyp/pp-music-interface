@@ -1,102 +1,102 @@
-# PeakPatch-MUSIC Interface
+# PeakPatch-MUSIC interface (`ppmi`)
 
-This repository is supposed to be used in combination with GIZMO-setup to be able to run PeakPatch
-as a submodule of MUSIC.
+Find a dark-matter halo in a large periodic box, then regenerate that same
+region at higher resolution with MUSIC and baryons: produce zoom-in initial
+conditions for a specified halo.
 
-**This code will only work if used from GIZMO-setup!**
-The link for the GIZMO-setup: https://github.com/Vasissualiyp/GIZMO-setup
+Three pieces:
 
-## Setting up the code
+- **MUSIC** (`../music_mpi`) — generates initial conditions, MPI-parallel.
+- **PeakPatch** (`../peakpatch`) — semi-analytic halo finder.
+- **`ppmi`** — this repo. The orchestrator that drives both in three stages,
+  exchanging files on disk.
 
-To set the code up, you must have the following environment variables set with `export` command:
+## Architecture
+
+The stages are separate processes exchanging files, not an in-process
+hand-off. Two codes with different MPI decompositions (MUSIC's FFTW slabs,
+PeakPatch's cubic tiles) and a Fortran/C++ boundary are more reliably stitched
+through disk; the fields are large but the jobs are long anyway.
+
 ```
-PP_DIR (For PeakPatch directory)
-MUSIC_DIR (For MUSIC directory)
-INTERFACE_DIR (For directory of this repo)
-```
-
-You can do it for instance, with the following command:
-
-```
-export PP_DIR = /path/to/peakpatch
-export MUSIC_DIR = /path/to/music
-export INTERFACE_DIR = /path/to/this_repository
-```
-
-Then you have to copy the tables to the parent directory of this code:
-```
-cp -r $PP_DIR/tables ../tables
-```
-
-## Necessary Modules
-
-When running the interface on one of the clusters, load the modules like this before compilation/run:
-
-### CITA
-```
-module load openmpi/4.1.6-gcc-ucx fftw/3.3.10-openmpi-ucx gsl/2.7.1 cfitsio/4.0.0 python/3.10.2
+  Stage A                Stage B                 Stage C
+  MUSIC survey    -->    PeakPatch        -->    MUSIC zoom
+  DM only                filter_gen              baryons + DM
+  levelmin=levelmax      hpkvd 1 (table)         levelmin unchanged
+  writes Fvec_<name>     hpkvd 0 (peaks)         levelmax raised
+                         merge_pkvd              ref_center/ref_extent
+                         merged .pksc            from the halo's xlag
 ```
 
-### CITA-starq
+The orchestrator is one dependency-free C++17 binary. Job submission is plain
+`sbatch`; Python is offline analysis only.
+
+## Build
+
 ```
-module load openmpi/4.1.6-gcc-ucx fftw/3.3.10-openmpi-ucx gsl/2.7.1 cfitsio/4.0.0 python/3.10.2
-```
-
-### Niagara
-```
-module load NiaEnv/2019b intel/2019u4 fftw/3.3.8 cfitsio/4.4.0 python/3.6.8 intelmpi/2019u4 gsl/2.5 hdf5
-```
-
-## Building class
-
-You should install classy python package. However, using `pip install classy` on Nigara,
-installs it improperly and one cannot use it.
-
-That's why I wrote script to install class in case you have such a case - look into `scripts` directory.
-
-And make sure that you load gcc before you try doing anything with it!
-
-## Compilation
-
-Change the `Makefile.systype` to the name of your system.
-After that, load the modules.
-Then, compile the code with the following command:
-```
-make hpkvd; make filter_gen; make -j### MUSIC
-```
-Here `###` stands for the number of parallel cores you want to use for compilation.
-You can compile MUSIC in parallel fashion, but not PeakPatch (hpkvd).
-
-To clean object and other compiled files, you can do:
-```
-make clean_music (Only for MUSIC)
-make clean_pp (Only for PeakPatch)
-make clean (For both)
+nix develop --command bash -c 'cmake -S . -B build -G Ninja && cmake --build build'
 ```
 
-## Running
+The PeakPatch and MUSIC binaries are built by delegation (the Makefile's `MUSIC`
+target calls `music_mpi`'s own Makefile; PeakPatch is built by the pipeline into
+each run directory because it bakes its grid size and run directory in at
+compile time).
 
-Edit the parameter file in `param/parameters.ini`, to set up parameters for both MUSIC and hpkvd runs.
+## Run spec
 
-Here are a few important things restrictions for the parameters:
+One INI file is the single source of truth; both codes' configs are generated
+from it. See `param/ppmi.ini` for a working example. The spec holds cosmology
+once, box once, `levelmin` once, the `[random]` block once; stages add only what
+they are allowed to change.
 
-* `seed` means nothing in `random`, it originally was used to generate PeakPatch overdensity field, 
-but since our overdensity is made by MUSIC, it is irrelevant.
-* Make sure that `levelmin`=`levelmax`, and that `nmesh`=2^`levelmin`. 
-Otherwise MUSIC-generated field will not be shaped the way that PeakPatch expects it to be 
-* `boxlength` should be equal to `boxsize`. Otherwise MUSIC-generated field in a box of a certain size
-will incorrectly be interpreted by PeakPatch. You will get the results, they will just be plain wrong.
-* `global_redshift` must be set to 0. This forces MUSIC to create the ICs at redshift 0,
-which is what should be used in PeakPatch.
+## CLI
 
-Then, generate filter banks with:
 ```
-./bin/filter_gen <path/to/parameters.ini>
+ppmi validate    <spec.ini>                      check every invariant
+ppmi gen-configs <spec.ini> --stage survey|zoom  emit MUSIC/PeakPatch configs
+ppmi run         <spec.ini> --music B --peakpatch-src S [--root DIR] [--dry-run]
+                                                 run the whole pipeline
+ppmi run         ... --stage survey|peakpatch|zoom   run one stage only
+ppmi submit      <spec.ini> --music B --peakpatch-src S --dry-run
+                                                 print the sbatch chain
+ppmi zoom-params <cat.pksc> <spec.ini> --rank N  select a halo, emit zoom conf
+ppmi catalog     info|select <cat.pksc> <spec.ini>
+ppmi feasibility <spec.ini> --z Z                mass range + expected count
+ppmi verify      <run-dir>                       re-hash every recorded output
 ```
 
-Finally, you can run `hpkvd + MUSIC` with:
+`run` skips a stage whose manifest is current; `--force` re-runs.
+
+## Worked example (small, ~2 minutes locally)
+
 ```
-./MUSIC <path/to/parameters.ini>
+# 1. build the orchestrator (above)
+# 2. survey + PeakPatch + zoom, 50 Mpc box, levelmin=6, zoom levelmax=8
+./build/ppmi run param/ppmi_small.ini \
+    --music  "$(pwd)/bin/MUSIC" \
+    --peakpatch-src ../peakpatch \
+    --root /tmp/demo
+./build/ppmi verify /tmp/demo
 ```
 
-To learn more about available MUSIC flags, run it without parameter file, like `./MUSIC`
+`param/ppmi_small.ini` is a valid, runnable spec using the analytic Eisenstein &
+Hu transfer function (no external table needed); `param/ppmi.ini` is a larger
+reference spec that uses a CAMB table. `ppmi validate` reports no violations,
+and the run produces `<root>/01_survey`, `02_peakpatch`, `03_zoom` with a
+manifest each.
+
+## Correctness
+
+The pipeline is only useful if the two MUSIC runs describe the same universe.
+Three invariants are enforced, not hoped for:
+
+1. **Realization** — the survey and zoom share `levelmin`, the whole `[random]`
+   block and `cubesize`. The spec holds them once; overriding them in a stage is
+   a hard error.
+2. **Grid pairing** — `2^levelmin == nsub·ntile`; `nmesh` is solved, not copied.
+3. **Frame** — generated zoom configs disable MUSIC's coarse-grid alignment
+   shift so particle positions line up with the catalogue's Lagrangian frame.
+
+Formats, sign conventions, the density-only hand-off, and the MUSIC gotchas are
+documented in [`docs/FORMATS.md`](docs/FORMATS.md). The factual baseline and
+full validation history live in `../plan/`.
