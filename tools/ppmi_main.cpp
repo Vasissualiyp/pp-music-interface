@@ -8,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -46,15 +47,23 @@ const char* kUsage =
     "  ppmi field spike  <out.bin>  <spec.ini> --index I,J,K [--amplitude A]\n"
     "        Synthesise the single-cell field the P3-T3 convention test needs.\n"
     "\n"
-    "  ppmi run    <spec.ini> [--root DIR] [--music PATH] [--peakpatch-src PATH]\n"
-    "                         [--ranks N] [--rank N|--mass-window A B]\n"
-    "                         [--min-isolation R] [--min-edge R]\n"
-    "                         [--extent-factor F] [--dry-run] [--force]\n"
-    "        Run survey, peakpatch and zoom in one staged, resumable run.\n"
-    "\n"
-    "  ppmi verify <run-dir>\n"
-    "        Re-hash every output recorded in every stage manifest under\n"
-    "        <run-dir> and report any that no longer match.\n";
+     "  ppmi run    <spec.ini> [--root DIR] [--music PATH] [--peakpatch-src PATH]\n"
+     "                         [--ranks N] [--rank N|--mass-window A B]\n"
+     "                         [--min-isolation R] [--min-edge R]\n"
+     "                         [--extent-factor F] [--dry-run] [--force]\n"
+     "                         [--stage survey|peakpatch|zoom]\n"
+     "        Run survey, peakpatch and zoom in one staged, resumable run.\n"
+     "        --stage runs just that stage against an existing root.\n"
+     "\n"
+     "  ppmi submit <spec.ini> --music PATH --peakpatch-src PATH [--root DIR]\n"
+     "                         [--ranks N] [--nodes N] [--time H:M:S]\n"
+     "                         [--partition P] --dry-run\n"
+     "        Print the three sbatch scripts and the afterok chain that runs\n"
+     "        the pipeline on a cluster. The MPI-overflow guard runs first.\n"
+     "\n"
+     "  ppmi verify <run-dir>\n"
+     "        Re-hash every output recorded in every stage manifest under\n"
+     "        <run-dir> and report any that no longer match.\n";
 
 // --- small argv helpers ----------------------------------------------------
 
@@ -98,6 +107,17 @@ double spec_double(const ppmi::RunSpec& s, const char* sec, const char* key,
 // sets the upper end of the resolvable mass range.
 double rsmooth_max(const ppmi::RunSpec& s) {
   return spec_double(s, "peakpatch", "Rsmooth_max", s.boxlength() / 5.0);
+}
+
+// The running binary's path, so a generated sbatch script can re-invoke ppmi.
+std::string g_program = "ppmi";
+
+ppmi::PipelineStage parse_pipeline_stage(const std::string& s) {
+  if (s == "survey") return ppmi::PipelineStage::kSurvey;
+  if (s == "peakpatch") return ppmi::PipelineStage::kPeakPatch;
+  if (s == "zoom") return ppmi::PipelineStage::kZoom;
+  throw std::runtime_error("--stage must be survey, peakpatch or zoom, got '" +
+                           s + "'");
 }
 
 // --- subcommands -----------------------------------------------------------
@@ -394,6 +414,21 @@ int cmd_run(int argc, char** argv) {
         "dry run: nothing on disk is touched; showing what each stage would "
         "do\n\n");
 
+  // --stage runs exactly one stage against an existing run root. This is what
+  // the generated sbatch scripts invoke, one job per stage.
+  std::string only = opt(argc, argv, "--stage", "");
+  if (!only.empty()) {
+    ppmi::PipelineStage s = parse_pipeline_stage(only);
+    ppmi::validate(spec);
+    std::string sha = o.dry_run ? "" : ppmi::prepare_root(spec, o);
+    ppmi::StageResult r = ppmi::run_stage(spec, o, s, sha);
+    std::printf("%s\n", ppmi::describe(r).c_str());
+    if (o.dry_run && !r.skipped && !r.manifest.command.empty())
+      std::printf("  would run: %s\n", r.manifest.command.c_str());
+    bool failed = !r.error.empty() || (!r.skipped && r.exit_status != 0);
+    return failed ? 1 : 0;
+  }
+
   std::vector<ppmi::StageResult> results = ppmi::run_pipeline(spec, o);
 
   bool any_failed = false;
@@ -408,6 +443,92 @@ int cmd_run(int argc, char** argv) {
     std::printf("\nrun root: %s\n", o.root.c_str());
   }
   return any_failed ? 1 : 0;
+}
+
+std::string sbatch_script(const ppmi::RunSpec& spec, const ppmi::RunOptions& o,
+                          ppmi::PipelineStage s, const std::string& nodes,
+                          const std::string& ntasks, const std::string& time,
+                          const std::string& partition) {
+  const std::string name = spec.ini.get_or("meta", "name", "run");
+  const std::string dir = ppmi::stage_dir(o.root, s);
+  std::string t;
+  t += "#!/bin/bash\n";
+  t += "#SBATCH --job-name=ppmi_" + name + "_" + ppmi::stage_name(s) + "\n";
+  t += "#SBATCH --nodes=" + nodes + "\n";
+  t += "#SBATCH --ntasks=" + ntasks + "\n";
+  if (!partition.empty()) t += "#SBATCH --partition=" + partition + "\n";
+  t += "#SBATCH --time=" + time + "\n";
+  t += "#SBATCH --output=" + dir + "/slurm-%j.out\n";
+  t += "set -euo pipefail\n";
+  t += g_program + " run --root " + o.root + " --stage " + ppmi::stage_name(s) +
+       " --music " + o.music_bin + " --peakpatch-src " + o.peakpatch_src +
+       " --ranks " + std::to_string(o.ranks) +
+       " --extent-factor " + std::to_string(o.extent_factor) + "\n";
+  return t;
+}
+
+int cmd_submit(int argc, char** argv) {
+  if (argc < 1) { std::fputs(kUsage, stderr); return 2; }
+  ppmi::RunSpec spec = ppmi::load_spec(argv[0]);
+  ppmi::validate(spec);
+
+  ppmi::RunOptions o;
+  o.root = opt(argc, argv, "--root", "run");
+  o.music_bin = opt(argc, argv, "--music", "");
+  o.peakpatch_src = opt(argc, argv, "--peakpatch-src", "");
+  o.ranks = std::atoi(
+      opt(argc, argv, "--ranks", std::to_string(spec.ranks())).c_str());
+  o.extent_factor = std::atof(
+      opt(argc, argv, "--extent-factor",
+          std::to_string(spec_double(spec, "zoom", "extent_factor", 3.0)))
+          .c_str());
+  o.criterion = criterion_from_args(argc, argv);
+  if (o.music_bin.empty() || o.peakpatch_src.empty())
+    throw std::runtime_error("--music and --peakpatch-src are required");
+  if (o.ranks <= 0) throw std::runtime_error("--ranks must be positive");
+  if (!has_flag(argc, argv, "--dry-run"))
+    throw std::runtime_error(
+        "submit currently prints the chain only; pass --dry-run");
+
+  const std::string nodes =
+      opt(argc, argv, "--nodes", spec.ini.get_or("run", "nodes", "1"));
+  const std::string time =
+      opt(argc, argv, "--time", spec.ini.get_or("run", "time", "12:00:00"));
+  const std::string partition =
+      opt(argc, argv, "--partition", spec.ini.get_or("run", "partition", ""));
+
+  std::printf("# ppmi submit --dry-run: %s\n", argv[0]);
+  std::printf("# root %s   survey ranks %d   nodes %s   time %s\n\n",
+              o.root.c_str(), o.ranks, nodes.c_str(), time.c_str());
+  const std::vector<std::string> preflight = ppmi::check_mpi_overflow(spec);
+  for (const std::string& w : preflight)
+    std::printf("# PREFLIGHT WARNING: %s\n", w.c_str());
+  if (!preflight.empty()) std::printf("\n");
+
+  const ppmi::PipelineStage stages[3] = {ppmi::PipelineStage::kSurvey,
+                                         ppmi::PipelineStage::kPeakPatch,
+                                         ppmi::PipelineStage::kZoom};
+  const char* ids[3] = {"A_survey", "B_peakpatch", "C_zoom"};
+  // The survey scales; PeakPatch's driver and MUSIC's zoom run single-rank.
+  const int ntasks[3] = {o.ranks, 1, 1};
+  for (int i = 0; i < 3; ++i) {
+    std::printf("### %s/sbatch/%s.sbatch\n", o.root.c_str(), ids[i]);
+    std::printf(
+        "%s\n",
+        sbatch_script(spec, o, stages[i], nodes, std::to_string(ntasks[i]),
+                      time, partition)
+            .c_str());
+  }
+  std::printf("### submit chain\n");
+  std::printf("A=$(sbatch --parsable %s/sbatch/A_survey.sbatch)\n",
+              o.root.c_str());
+  std::printf(
+      "B=$(sbatch --parsable --dependency=afterok:$A %s/sbatch/B_peakpatch.sbatch)\n",
+      o.root.c_str());
+  std::printf(
+      "C=$(sbatch --parsable --dependency=afterok:$B %s/sbatch/C_zoom.sbatch)\n",
+      o.root.c_str());
+  return 0;
 }
 
 int cmd_verify(int argc, char** argv) {
@@ -430,6 +551,12 @@ int main(int argc, char** argv) {
     std::fputs(kUsage, stderr);
     return 2;
   }
+  g_program = argv[0];
+  try {
+    g_program = std::filesystem::canonical(argv[0]).string();
+  } catch (const std::exception&) {
+    // Not on disk as given; keep the literal so the dry run still shows it.
+  }
   std::string cmd = argv[1];
   int rest_argc = argc - 2;
   char** rest = argv + 2;
@@ -441,6 +568,7 @@ int main(int argc, char** argv) {
     if (cmd == "zoom-params") return cmd_zoom_params(rest_argc, rest);
     if (cmd == "field") return cmd_field(rest_argc, rest);
     if (cmd == "run") return cmd_run(rest_argc, rest);
+    if (cmd == "submit") return cmd_submit(rest_argc, rest);
     if (cmd == "verify") return cmd_verify(rest_argc, rest);
     if (cmd == "catalog") {
       if (rest_argc < 1) { std::fputs(kUsage, stderr); return 2; }
