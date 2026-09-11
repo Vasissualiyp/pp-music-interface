@@ -548,6 +548,36 @@ StageResult run_stage(const RunSpec& spec, const RunOptions& o, PipelineStage s,
       }
       m.outputs.push_back(record_file(full));
     }
+
+    // A PeakPatch stage that produces an EMPTY catalogue has not succeeded, it
+    // has failed silently. This is not hypothetical: handing PeakPatch a field
+    // at the wrong redshift made every peak about forty times too shallow, so
+    // nothing reached delta_c = 1.686, and the run reported success at every
+    // stage while producing zero halos. Nothing downstream noticed until halo
+    // selection had nothing to select from, several minutes later and one
+    // layer removed from the cause. Catch it here, and say what usually
+    // causes it.
+    if (final_status == 0 && s == PipelineStage::kPeakPatch) {
+      const std::string cat = res.dir + "/" + merged_catalog_rel(spec);
+      try {
+        CatalogHeader h = peek_header(cat);
+        if (h.n_halos == 0) {
+          final_status = 1;
+          error_msg =
+              "PeakPatch ran cleanly but found no halos. The usual cause is a "
+              "density field at the wrong amplitude: PeakPatch expects the "
+              "linear field extrapolated to z=0 and applies its own growth "
+              "factor, so a field left at zstart is far too shallow to reach "
+              "delta_c. Check the field statistics against the power spectrum, "
+              "and check that Rsmooth_max and the grid resolution bracket the "
+              "halo masses that have collapsed by the target redshift "
+              "(try 'ppmi feasibility').";
+        }
+      } catch (const CatalogError& e) {
+        final_status = 1;
+        error_msg = std::string("PeakPatch catalogue is unreadable: ") + e.what();
+      }
+    }
     m.exit_status = final_status;
   }
 
