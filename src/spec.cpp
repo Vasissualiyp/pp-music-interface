@@ -452,7 +452,7 @@ std::vector<std::string> check_mpi_overflow(const RunSpec& spec) {
   int ranks = spec.ranks();
   if (ranks <= 0) return warnings;
 
-  const double kLimit = 2147483648.0;  // 2^31
+  const double kLimit = 2147483647.0;  // INT_MAX, as music_mpi/src/poisson.cc
 
   struct StageLevel {
     const char* name;
@@ -462,21 +462,26 @@ std::vector<std::string> check_mpi_overflow(const RunSpec& spec) {
                          {"zoom", spec.zoom_levelmax()}};
 
   for (const auto& stage : stages) {
-    double G = std::ldexp(1.0, stage.levelmax);  // 2^levelmax
-    double local = G / ranks;
-    double value = local * local * (G / 2.0 + 1.0);
-    if (value >= kLimit) {
-      // Find the minimum rank count that keeps the transpose message count
-      // under the 32-bit limit: (G/P)^2 * (G/2+1) < 2^31.
-      double p_min_continuous = G / std::sqrt(kLimit / (G / 2.0 + 1.0));
-      int min_p = static_cast<int>(std::ceil(p_min_continuous));
-      if (min_p < 1) min_p = 1;
-      // Nudge up in case of rounding at the boundary.
-      for (int guard = 0; guard < 64; ++guard) {
-        double l = G / min_p;
-        double v = l * l * (G / 2.0 + 1.0);
-        if (v < kLimit) break;
-        ++min_p;
+    const int n = stage.levelmax;
+    if (n < 0 || n > 40) continue;
+    const double G = std::ldexp(1.0, n);  // 2^levelmax
+    // MUSIC's FFTW-MPI slab is an integer division of the global grid; use
+    // the same integer slab size so the advisory matches its runtime guard.
+    const double local = std::floor(G / ranks);
+    const double value = local * local * (G / 2.0 + 1.0);
+    if (value > kLimit) {
+      // Mirror music_mpi/src/poisson.cc lines 556-564: find the minimum rank
+      // count by doubling and testing the integer-division message count.
+      long long min_p = 1;
+      const long long Gll = 1LL << n;
+      while (min_p < Gll) {
+        min_p *= 2;
+        const long long slab = Gll / min_p;
+        if (static_cast<double>(slab) * static_cast<double>(slab) *
+                static_cast<double>(Gll / 2 + 1) <=
+            kLimit) {
+          break;
+        }
       }
       warnings.push_back(
           std::string("MPI overflow: the ") + stage.name + " stage grid G=" +

@@ -214,7 +214,9 @@ TEST("rule: the zoom region must lie inside the unit box") {
 }
 
 TEST("rule: the MPI overflow guard warns and names a safe rank count") {
-  // (G/P)^2 * (G/2+1) < 2^31. At G=4096, P=4 gives 1024^2 * 2049 > INT_MAX.
+  // (G/P)^2 * (G/2+1) < INT_MAX. At G=4096, P=4 gives 1024^2 * 2049 > INT_MAX,
+  // and MUSIC's own guard (poisson.cc:556-564) doubles ranks with integer slab
+  // division, so the minimum safe count is 8, not the continuous ~5.
   Ini ini = Ini::parse(kValidSpec);
   ini.set("box", "levelmin", "12");
   ini.set("survey", "levelmax", "12");
@@ -222,6 +224,11 @@ TEST("rule: the MPI overflow guard warns and names a safe rank count") {
   ini.set("run", "ranks", "4");
   std::vector<std::string> w = check_mpi_overflow(spec_from(ini.to_string()));
   CHECK(!w.empty());
+  bool names_eight = false;
+  for (const std::string& s : w) {
+    if (s.find("at least 8 ranks") != std::string::npos) names_eight = true;
+  }
+  CHECK(names_eight);
 
   // Small grids are always safe.
   CHECK(check_mpi_overflow(valid()).empty());
