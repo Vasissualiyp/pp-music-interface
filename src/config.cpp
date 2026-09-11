@@ -15,6 +15,19 @@
 
 namespace ppmi {
 
+namespace {
+
+// MUSIC transfer-function plugins that read a tabulated file from disk. The
+// rest are analytic. Names are the plugin registration strings, from
+// music_mpi/src/plugins/transfer_camb.cc:334, transfer_peakpatch.cc:334 and
+// the linger++/music readers.
+bool transfer_needs_file(const std::string& name) {
+  return name == "camb_file" || name == "camb" || name == "music" ||
+         name == "pptf" || name == "linger++";
+}
+
+}  // namespace
+
 // MUSIC config keys stage C must inherit unchanged from stage A. "levelmin"
 // and "cubesize" are literal MUSIC keys (music_mpi/src/random.cc line 1573);
 // every "seed[N]" per-level key (sprintf'd at random.cc line 1640) is frozen
@@ -103,8 +116,24 @@ std::string music_conf(const RunSpec& spec, Stage stage, const RefRegion* ref) {
   out.set("cosmology", "H0", spec.ini.get("cosmology", "H0"));
   out.set("cosmology", "sigma_8", spec.ini.get("cosmology", "sigma_8"));
   out.set("cosmology", "nspec", spec.ini.get("cosmology", "nspec"));
-  out.set("cosmology", "transfer", spec.ini.get("cosmology", "transfer"));
-  out.set("cosmology", "transfer_file", spec.ini.get("cosmology", "transfer_file"));
+  const std::string transfer = spec.ini.get("cosmology", "transfer");
+  out.set("cosmology", "transfer", transfer);
+  // Only the tabulated transfer-function plugins read a file. The analytic
+  // ones (bbks, the eisenstein family, inflation) compute T(k) in closed form
+  // and MUSIC never looks for transfer_file, so requiring one here would make
+  // a perfectly valid analytic spec unusable. See
+  // music_mpi/src/plugins/transfer_*.cc for which plugins call getValue on it.
+  if (transfer_needs_file(transfer)) {
+    if (!spec.ini.has("cosmology", "transfer_file")) {
+      throw SpecSyntaxError(
+          "transfer = " + transfer +
+          " reads a tabulated transfer function, so [cosmology] transfer_file "
+          "is required. Either supply one, or use an analytic transfer "
+          "function such as eisenstein or bbks.");
+    }
+    out.set("cosmology", "transfer_file",
+            spec.ini.get("cosmology", "transfer_file"));
+  }
 
   // [random] - random.cc lines 1573-1640. This block must come out
   // byte-identical between the survey and zoom stages: that is the
@@ -182,11 +211,77 @@ std::string peakpatch_ini(const RunSpec& spec) {
   // MUSIC run, so PeakPatch must not generate its own.
   out.set("peak_displacement", "ireadfield", "1");
 
+  // The field the survey wrote. PeakPatch builds the input filename as
+  // fielddir // "Fvec_" // incode (RandomField.f90:1509), where incode is the
+  // ini key `densfilein` (hpkvdmodule.f90:214) and fielddir is anchored to the
+  // run directory (config_reader.f90:938). So these two keys plus the file at
+  // <rundir>/fields/Fvec_<name> are what make ireadfield=1 find anything.
+  out.set("peak_displacement", "fielddir", "fields/");
+  out.set("peak_displacement", "densfilein", name);
+  out.set("peak_displacement", "densfileout", "-1");
+  out.set("peak_displacement", "ilpt", "2");
+  out.set("peak_displacement", "ioutfield", "0");
+  out.set("peak_displacement", "iZeld", "-1");
+  out.set("peak_displacement", "iwrap", "0");
+
   // [lattice_parameters_hpkvd] - config_reader.f90 case 'cenx'/'ceny'/'cenz'.
   std::array<std::string, 3> cen = split_triple_raw(spec.ini.get("peakpatch", "cen"));
   out.set("lattice_parameters_hpkvd", "cenx", cen[0]);
   out.set("lattice_parameters_hpkvd", "ceny", cen[1]);
   out.set("lattice_parameters_hpkvd", "cenz", cen[2]);
+  // -1 means "derive from ntile/nmesh" in evaluate_parameters.
+  for (const char* k : {"nlx", "nly", "nlz", "n1", "n2", "n3"})
+    out.set("lattice_parameters_hpkvd", k, "-1");
+
+  // Keys with NO default in set_default_params. Leaving any of these out does
+  // not produce an error: filterfile, for instance, defaults to the empty
+  // string and is then prefixed with the run directory, so filter_gen tries to
+  // open the directory itself and dies with "Is a directory". Everything below
+  // was taken from a configuration that provably runs
+  // (tests/data/golden/parameters_used.ini).
+  out.set("peak_patch_main", "short_name", name);
+  out.set("peak_patch_main", "runtype", "0");
+  out.set("box_params", "largerun", "0");
+
+  out.set("machine_params", "nnodes", "1");
+  out.set("machine_params", "ntasks", "-1");
+  out.set("machine_params", "nompth", "1");
+
+  out.set("nongaussianities", "NonGauss", "0");
+  out.set("nongaussianities", "lcode", "2.6259e-52");
+  out.set("nongaussianities", "acode_approx", "3.0");
+
+  out.set("ellipsoidal_collapse", "filterfile", "tables/filter.dat");
+  out.set("ellipsoidal_collapse", "TabInterpFile", "HomelTab.dat");
+  out.set("ellipsoidal_collapse", "TabInterpNx", "50");
+  out.set("ellipsoidal_collapse", "TabInterpNy", "20");
+  out.set("ellipsoidal_collapse", "TabInterpNz", "20");
+  out.set("ellipsoidal_collapse", "TabInterpX1", "1.5");
+  out.set("ellipsoidal_collapse", "TabInterpX2", "8.0");
+  out.set("ellipsoidal_collapse", "TabInterpY1", "0.0");
+  out.set("ellipsoidal_collapse", "TabInterpY2", "0.5");
+  out.set("ellipsoidal_collapse", "TabInterpZ1", "-0.99990");
+  out.set("ellipsoidal_collapse", "TabInterpZ2", "0.99990");
+  out.set("ellipsoidal_collapse", "iforce_strat", "4");
+  out.set("ellipsoidal_collapse", "ivir_strat", "2");
+  out.set("ellipsoidal_collapse", "dcrit", "200.");
+  out.set("ellipsoidal_collapse", "fcoll_1", "0.01");
+  out.set("ellipsoidal_collapse", "fcoll_2", "0.171");
+  out.set("ellipsoidal_collapse", "fcoll_3", "0.171");
+  out.set("ellipsoidal_collapse", "ioutshear", "0");
+  out.set("ellipsoidal_collapse", "rmax2rs", "0.0");
+  out.set("ellipsoidal_collapse", "wsmooth", "1");
+
+  out.set("merging_algorithm", "iLexc", "3");
+  out.set("merging_algorithm", "iLmrg", "0");
+  out.set("merging_algorithm", "iFexc", "0");
+  out.set("merging_algorithm", "iFmrg", "0");
+
+  // PeakPatch reads its own P(k) table. With an analytic MUSIC transfer
+  // function there is no shared file, so this names the table PeakPatch ships.
+  out.set("cosmology", "pkfile", spec.ini.get_or("peakpatch", "pkfile",
+                                                 "planck18_intermittent.dat"));
+  out.set("random", "seed", spec.ini.get("random", "seed_levelmin"));
 
   return out.to_string();
 }

@@ -30,6 +30,11 @@ inline constexpr double kFilterRatio = 1.15;
 // than this fraction.
 inline constexpr double kFilterSnapFraction = 0.07;
 
+// Linear growth factor D(z), Carroll-Press-Turner for flat LCDM, normalised so
+// that D(0) = 1. Exposed because the pipeline needs D(0)/D(zstart) to convert
+// MUSIC's field, written at zstart, into the z=0 linear field PeakPatch expects.
+double growth_factor(double z, double omega_m0);
+
 struct MassRange {
   double m_min = 0.0;     // mass at the smallest filter radius, M_sun
   double m_max = 0.0;     // mass at Rsmooth_max, M_sun

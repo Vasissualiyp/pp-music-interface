@@ -33,7 +33,7 @@ constexpr double kDeltaC = 1.686;  // linear collapse threshold
 // Growth factor: Carroll, Press & Turner (1992) fitting formula for a flat
 // matter+Lambda universe, normalised to D(z=0) = 1.
 // ---------------------------------------------------------------------------
-double growth_factor(double z, double omega_m0) {
+double growth_factor_impl(double z, double omega_m0) {
   const double omega_l0 = 1.0 - omega_m0;
   auto g = [&](double zz) {
     double a3 = (1.0 + zz) * (1.0 + zz) * (1.0 + zz);
@@ -128,7 +128,7 @@ SigmaEval make_sigma_eval(const Cosmology& cosmo, double sigma_8, double nspec,
   double r8 = 8.0 / cosmo.h;
   double s2_8_raw = sigma2_raw(r8, cosmo.Omega_m, cosmo.h, nspec);
   s.norm = (sigma_8 * sigma_8) / s2_8_raw;
-  s.growth = growth_factor(redshift, cosmo.Omega_m);
+  s.growth = growth_factor_impl(redshift, cosmo.Omega_m);
   return s;
 }
 
@@ -318,6 +318,12 @@ std::string feasibility_report(double boxlength, int levelmin, double redshift,
   }
 
   return os.str();
+}
+
+
+// Public wrapper; the implementation lives in the anonymous namespace above.
+double growth_factor(double z, double omega_m0) {
+  return growth_factor_impl(z, omega_m0);
 }
 
 }  // namespace ppmi

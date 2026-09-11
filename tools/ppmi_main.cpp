@@ -15,6 +15,7 @@
 #include "ppmi/feasibility.hpp"
 #include "ppmi/field.hpp"
 #include "ppmi/geometry.hpp"
+#include "ppmi/pipeline.hpp"
 #include "ppmi/spec.hpp"
 
 namespace {
@@ -43,7 +44,17 @@ const char* kUsage =
     "\n"
     "  ppmi field stat   <field.bin> <spec.ini>\n"
     "  ppmi field spike  <out.bin>  <spec.ini> --index I,J,K [--amplitude A]\n"
-    "        Synthesise the single-cell field the P3-T3 convention test needs.\n";
+    "        Synthesise the single-cell field the P3-T3 convention test needs.\n"
+    "\n"
+    "  ppmi run    <spec.ini> [--root DIR] [--music PATH] [--peakpatch-src PATH]\n"
+    "                         [--ranks N] [--rank N|--mass-window A B]\n"
+    "                         [--min-isolation R] [--min-edge R]\n"
+    "                         [--extent-factor F] [--dry-run] [--force]\n"
+    "        Run survey, peakpatch and zoom in one staged, resumable run.\n"
+    "\n"
+    "  ppmi verify <run-dir>\n"
+    "        Re-hash every output recorded in every stage manifest under\n"
+    "        <run-dir> and report any that no longer match.\n";
 
 // --- small argv helpers ----------------------------------------------------
 
@@ -353,6 +364,65 @@ int cmd_field(int argc, char** argv) {
   return 2;
 }
 
+int cmd_run(int argc, char** argv) {
+  if (argc < 1) { std::fputs(kUsage, stderr); return 2; }
+  ppmi::RunSpec spec = ppmi::load_spec(argv[0]);
+
+  ppmi::RunOptions o;
+  o.root = opt(argc, argv, "--root", "run");
+  o.music_bin = opt(argc, argv, "--music", "");
+  o.peakpatch_src = opt(argc, argv, "--peakpatch-src", "");
+  o.ranks = std::atoi(opt(argc, argv, "--ranks", std::to_string(spec.ranks())).c_str());
+  o.dry_run = has_flag(argc, argv, "--dry-run");
+  o.force = has_flag(argc, argv, "--force");
+  o.extent_factor = std::atof(
+      opt(argc, argv, "--extent-factor",
+          std::to_string(spec_double(spec, "zoom", "extent_factor", 3.0)))
+          .c_str());
+  o.criterion = criterion_from_args(argc, argv);
+
+  if (o.music_bin.empty())
+    throw std::runtime_error(
+        "--music PATH is required: the absolute path to the MUSIC binary");
+  if (o.peakpatch_src.empty())
+    throw std::runtime_error(
+        "--peakpatch-src PATH is required: the PeakPatch source tree the "
+        "peakpatch stage builds a private copy from");
+
+  if (o.dry_run)
+    std::printf(
+        "dry run: nothing on disk is touched; showing what each stage would "
+        "do\n\n");
+
+  std::vector<ppmi::StageResult> results = ppmi::run_pipeline(spec, o);
+
+  bool any_failed = false;
+  for (const auto& r : results) {
+    std::printf("%s\n", ppmi::describe(r).c_str());
+    if (o.dry_run && !r.skipped && !r.manifest.command.empty()) {
+      std::printf("  would run: %s\n", r.manifest.command.c_str());
+    }
+    if (!r.error.empty()) any_failed = true;
+  }
+  if (!o.dry_run) {
+    std::printf("\nrun root: %s\n", o.root.c_str());
+  }
+  return any_failed ? 1 : 0;
+}
+
+int cmd_verify(int argc, char** argv) {
+  if (argc < 1) { std::fputs(kUsage, stderr); return 2; }
+  std::vector<std::string> problems = ppmi::verify_run(argv[0]);
+  if (problems.empty()) {
+    std::printf("%s: verified -- every recorded output matches its manifest\n",
+                argv[0]);
+    return 0;
+  }
+  for (const auto& p : problems) std::printf("%s\n", p.c_str());
+  std::printf("\n%zu problem(s) found under %s\n", problems.size(), argv[0]);
+  return 1;
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -370,6 +440,8 @@ int main(int argc, char** argv) {
     if (cmd == "feasibility") return cmd_feasibility(rest_argc, rest);
     if (cmd == "zoom-params") return cmd_zoom_params(rest_argc, rest);
     if (cmd == "field") return cmd_field(rest_argc, rest);
+    if (cmd == "run") return cmd_run(rest_argc, rest);
+    if (cmd == "verify") return cmd_verify(rest_argc, rest);
     if (cmd == "catalog") {
       if (rest_argc < 1) { std::fputs(kUsage, stderr); return 2; }
       std::string sub = rest[0];

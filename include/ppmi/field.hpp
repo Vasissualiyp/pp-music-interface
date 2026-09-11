@@ -190,6 +190,34 @@ struct FieldStats {
 };
 FieldStats field_stats(const std::string& path, const PeakPatchGrid& grid);
 
+// Pad an unpadded core field into the layout PeakPatch's LIVE reader wants.
+//
+// IMPORTANT, and a correction to the tile-blocked layout described above.
+// readsubbox(), which reads ntile^3 per-tile blocks, belongs to
+// read_external_field(), and that routine is DEAD CODE: it is defined and never
+// called (00_FINDINGS.md section 10). The live ireadfield=1 path is
+// RandomField_Input (RandomField.f90:1202-1222), and it reads a plain GLOBAL
+// CUBE of side n = nsub*ntile + 2*nbuff, in Fortran order, each MPI rank taking
+// its own z-slab at byte offset 4*n*n*local_z_start:
+//
+//     read(33,pos=offset) (((delta(i,j,k),i=1,n),j=1,n),k=1,local_nz)
+//
+// The two layouts coincide when ntile == 1, because then next == nmesh and the
+// tile-blocked file is a single nmesh^3 block. That is why the tile-blocked
+// tests pass and why this distinction went unnoticed. For ntile > 1 they differ
+// and only this one is read.
+//
+// Reads core_grid^3 float32 from in_path and writes n_ext^3 float32 to
+// out_path, filling the nbuff-cell border by periodic wraparound. This is what
+// PeakPatch's own padICs utility does; doing it here avoids depending on that
+// binary being built.
+// `scale` multiplies every value on the way through. The pipeline uses it to
+// carry MUSIC's field, written at zstart, to the z=0 linear amplitude
+// PeakPatch expects: PeakPatch applies its own D(z) internally, so handing it
+// a z=50 field makes every peak ~40x too shallow and it finds no halos at all.
+void pad_core_to_next(const PeakPatchGrid& grid, const std::string& in_path,
+                      const std::string& out_path, double scale = 1.0);
+
 // Synthesise a field that is zero everywhere except one cell, for the P3-T3
 // spike test. Indices are zero-based in the global unpadded cube. Deliberately
 // asymmetric indices make a transposition detectable.

@@ -466,4 +466,49 @@ FieldMeta FieldMeta::from_ini(const std::string& text) {
   return m;
 }
 
+
+void pad_core_to_next(const PeakPatchGrid& grid, const std::string& in_path,
+                      const std::string& out_path, double scale) {
+  grid.validate();
+  const std::int64_t core = grid.core_grid();
+  const std::int64_t n = grid.n_ext();
+  const std::int64_t nb = grid.nbuff;
+
+  std::ifstream in(in_path, std::ios::binary);
+  if (!in) throw FieldError("cannot open core field " + in_path);
+  in.seekg(0, std::ios::end);
+  const std::int64_t want = core * core * core * 4;
+  if (in.tellg() != want) {
+    throw FieldError("core field " + in_path + " is " +
+                     std::to_string((long long)in.tellg()) + " bytes, expected " +
+                     std::to_string((long long)want) + " for a " +
+                     std::to_string((long long)core) + "^3 grid");
+  }
+  in.seekg(0, std::ios::beg);
+  std::vector<float> src((std::size_t)(core * core * core));
+  in.read(reinterpret_cast<char*>(src.data()), want);
+  if (!in) throw FieldError("short read on " + in_path);
+
+  std::ofstream out(out_path, std::ios::binary | std::ios::trunc);
+  if (!out) throw FieldError("cannot write padded field " + out_path);
+
+  // One z-plane at a time, so a large field never needs a second full copy.
+  std::vector<float> plane((std::size_t)(n * n));
+  auto wrap = [core](std::int64_t v) { return ((v % core) + core) % core; };
+  for (std::int64_t k = 0; k < n; ++k) {
+    const std::int64_t kc = wrap(k - nb);
+    for (std::int64_t j = 0; j < n; ++j) {
+      const std::int64_t jc = wrap(j - nb);
+      for (std::int64_t i = 0; i < n; ++i) {
+        const std::int64_t ic = wrap(i - nb);
+        plane[(std::size_t)(i + n * j)] = (float)(
+            scale * (double)src[(std::size_t)(ic + core * (jc + core * kc))]);
+      }
+    }
+    out.write(reinterpret_cast<const char*>(plane.data()),
+              (std::streamsize)(n * n * 4));
+  }
+  if (!out) throw FieldError("short write on " + out_path);
+}
+
 }  // namespace ppmi

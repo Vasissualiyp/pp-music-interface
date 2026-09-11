@@ -28,6 +28,7 @@ add_library(ppmi_core
   src/config.cpp
   src/feasibility.cpp
   src/manifest.cpp
+  src/pipeline.cpp
 )
 target_include_directories(ppmi_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
@@ -35,7 +36,7 @@ add_executable(ppmi tools/ppmi_main.cpp)
 target_link_libraries(ppmi PRIVATE ppmi_core)
 
 enable_testing()
-foreach(t geometry catalog field spec feasibility manifest)
+foreach(t geometry catalog field spec feasibility manifest pipeline)
   add_executable(test_${t} tests/test_${t}.cpp)
   target_link_libraries(test_${t} PRIVATE ppmi_core)
   target_include_directories(test_${t} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/tests)
